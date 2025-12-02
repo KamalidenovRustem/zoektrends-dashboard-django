@@ -1,0 +1,482 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>{% block title %}Columbus AI - Sales Intelligence Dashboard{% endblock %}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{% static 'images/ColumbusLogo.png' %}" onerror="this.href='{% static 'images/columbus-Refined.png' %}'">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <style>
+        :root {
+            --brand-dark: #0F3981;
+            --brand-accent: #F71E7C;
+            --brand-bg: #F7F9FC;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--brand-bg);
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .nav-logo img {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+        }
+
+        .nav-logo-content {
+            display: flex;
+            flex-direction: column;
+            gap: 0.125rem;
+        }
+
+        .nav-logo-text {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--brand-dark);
+            line-height: 1.2;
+        }
+
+        .nav-logo-tagline {
+            font-size: 0.8rem;
+            color: #64748b;
+            line-height: 1.2;
+        }
+
+        .text-brand-accent {
+            color: var(--brand-accent);
+            font-weight: 600;
+        }
+
+        .nav-link {
+            position: relative;
+            padding: 0.5rem 1rem;
+            color: #64748b;
+            font-weight: 500;
+            font-size: 0.875rem;
+            text-decoration: none;
+            transition: color 0.2s;
+            border-bottom: 2px solid transparent;
+        }
+
+        .nav-link:hover {
+            color: var(--brand-dark);
+        }
+
+        .nav-link.active {
+            color: var(--brand-dark);
+            border-bottom-color: var(--brand-accent);
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .username-display {
+            color: var(--brand-dark);
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .logout-btn {
+            padding: 0.5rem 1.25rem;
+            background: linear-gradient(135deg, var(--brand-dark) 0%, #1e40af 100%);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(15, 57, 129, 0.3);
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            color: #991b1b;
+            border-left: 4px solid #dc2626;
+        }
+
+        .alert-success {
+            background: #f0fdf4;
+            color: #166534;
+            border-left: 4px solid #16a34a;
+        }
+
+        .alert-warning {
+            background: #fffbeb;
+            color: #92400e;
+            border-left: 4px solid #f59e0b;
+        }
+
+        .alert-info {
+            background: #eff6ff;
+            color: #1e40af;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .content-wrapper {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        footer {
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            margin-top: 3rem;
+            padding: 1.5rem 0;
+        }
+
+        footer p {
+            text-align: center;
+            color: #64748b;
+            font-size: 0.875rem;
+        }
+
+        footer a {
+            color: var(--brand-accent);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        [x-cloak] { display: none !important; }
+    </style>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body x-data="{ showMobileMenu: false }">
+    <!-- Columbus AI Entry Animation -->
+    <div id="entryAnimation" class="fixed inset-0 z-50 flex items-center justify-center bg-white">
+        <div id="animStage" class="relative flex items-center justify-center" style="width: 100vw; height: 100vh;">
+            <!-- Vertical Blue Line (thin, drops in with bounce) -->
+            <div id="blueLine" class="bg-[#0F3980] w-[6px] h-[180px] opacity-0 rounded-full absolute z-20" style="left: 50%; transform: translateX(-50%);"></div>
+
+            <!-- Clipped slots anchored to the line; inner images slide using 'left' -->
+            <div id="logoColumbus" class="absolute z-10 overflow-hidden" style="top: 50%; transform: translateY(-50%); left: 50%; opacity: 0; height: 120px; width: 0;">
+                <img id="columbusImg" src="{% static 'images/columbus-Refined.png' %}" alt="Columbus AI" class="block" style="position: absolute; height: 120px; width: auto; max-width: none; top: 0; left: 0;">
+            </div>
+            <div id="logoAgiliz" class="absolute z-10 overflow-hidden" style="top: 50%; transform: translateY(-50%); left: 50%; opacity: 0; height: 120px; width: 0;">
+                <img id="agilizImg" src="{% static 'images/Agiliz-Refined.png' %}" alt="Agiliz" class="block" style="position: absolute; height: 120px; width: auto; max-width: none; top: 0; left: 0;">
+                <span id="agilizFallback" class="hidden font-semibold text-4xl tracking-wide text-[#0F3980]">AGILIZ</span>
+            </div>
+        </div>
+        
+        <style>
+            /* Bouncey drop for the vertical line */
+            @keyframes dropInBounce {
+                0% { transform: translateY(-120vh); opacity: 0; }
+                60% { transform: translateY(0); opacity: 1; }
+                75% { transform: translateY(-16px); }
+                88% { transform: translateY(8px); }
+                100% { transform: translateY(0); }
+            }
+
+            @keyframes riseOutFade {
+                0% { transform: translateY(0); opacity: 1; }
+                100% { transform: translateY(-120vh); opacity: 0; }
+            }
+
+            .transition-pos { transition: left 700ms cubic-bezier(0.22, 1, 0.36, 1); will-change: left; }
+        </style>
+
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Only play once per session
+            const animationShown = sessionStorage.getItem('entryAnimationShown');
+            if (animationShown === 'true') {
+                document.getElementById('entryAnimation').style.display = 'none';
+                return;
+            }
+
+            const entryAnimation = document.getElementById('entryAnimation');
+            const blueLine = document.getElementById('blueLine');
+            const logoLeft = document.getElementById('logoColumbus');
+            const logoRight = document.getElementById('logoAgiliz');
+            const columbusImg = document.getElementById('columbusImg');
+            const agilizImg = document.getElementById('agilizImg');
+            const agilizFallback = document.getElementById('agilizFallback');
+
+            // If Agiliz image is missing, show fallback text
+            if (agilizImg) {
+                agilizImg.addEventListener('error', () => {
+                    agilizImg.classList.add('hidden');
+                    agilizFallback.classList.remove('hidden');
+                }, { once: true });
+            }
+
+            // Layout numbers
+            const targetHeight = 160; // increased size
+            let leftWidth = 320;   // fallback; replaced when image size known
+            let rightWidth = 220;  // fallback; replaced when image size known
+            const lineDropDuration = 900; // ms
+            const pauseAfterDrop = 150; // ms
+            const logoSlideDuration = 700; // matches CSS transition
+            const visibleHold = 1600; // a bit more delay once fully out
+            const retractDuration = 600; // ms
+            const lineExitDuration = 600; // ms
+
+            function updateSlotLayout() {
+                // Left slot: width leftWidth, right edge on the line
+                logoLeft.style.height = `${targetHeight}px`;
+                logoLeft.style.width = `${leftWidth}px`;
+                logoLeft.style.left = `calc(50% - ${leftWidth}px)`;
+                // Right slot: width rightWidth, left edge on the line
+                logoRight.style.height = `${targetHeight}px`;
+                logoRight.style.width = `${rightWidth}px`;
+                logoRight.style.left = '50%';
+                // Ensure images match height
+                if (columbusImg) columbusImg.style.height = `${targetHeight}px`;
+                if (agilizImg) agilizImg.style.height = `${targetHeight}px`;
+                // Start images just inside the line so they slide outward
+                if (columbusImg) columbusImg.style.left = `${leftWidth}px`;
+                if (agilizImg) agilizImg.style.left = `${-rightWidth}px`;
+            }
+
+            // Try to compute real widths from natural sizes
+            function computeScaledWidth(img) {
+                if (!img || !img.naturalWidth || !img.naturalHeight) return null;
+                const ratio = targetHeight / img.naturalHeight;
+                return Math.round(img.naturalWidth * ratio);
+            }
+
+            function maybeUpdateFromImages() {
+                const lw = computeScaledWidth(columbusImg);
+                const rw = computeScaledWidth(agilizImg);
+                if (lw) leftWidth = lw;
+                if (rw) rightWidth = rw;
+                updateSlotLayout();
+            }
+
+            // Initial layout with fallbacks
+            updateSlotLayout();
+
+            // Update when images load
+            if (columbusImg && !columbusImg.complete) {
+                columbusImg.addEventListener('load', maybeUpdateFromImages, { once: true });
+            }
+            if (agilizImg && !agilizImg.complete) {
+                agilizImg.addEventListener('load', maybeUpdateFromImages, { once: true });
+            }
+            // Also try immediately in case they are already cached
+            maybeUpdateFromImages();
+
+            // STEP 1: Line drops in with bounce
+            blueLine.style.opacity = '1';
+            blueLine.style.animation = `dropInBounce ${lineDropDuration}ms cubic-bezier(0.22, 1, 0.36, 1) forwards`;
+
+            // STEP 2: Logos slide out from the line (true slot reveal)
+            setTimeout(() => {
+                // Show slots at the moment of motion to avoid initial flash
+                logoLeft.style.opacity = '1';
+                logoRight.style.opacity = '1';
+                // Animate inner images outward
+                if (columbusImg) columbusImg.classList.add('transition-pos');
+                if (agilizImg) agilizImg.classList.add('transition-pos');
+                if (columbusImg) columbusImg.style.left = '0px';
+                if (agilizImg) agilizImg.style.left = '0px';
+            }, lineDropDuration + pauseAfterDrop);
+
+            // STEP 3: Hold, then retract logos (slide back into the line)
+            setTimeout(() => {
+                if (columbusImg) columbusImg.style.left = `${leftWidth}px`;
+                if (agilizImg) agilizImg.style.left = `${-rightWidth}px`;
+            }, lineDropDuration + pauseAfterDrop + logoSlideDuration + visibleHold);
+
+            // STEP 4: Line exits upward and fades away
+            setTimeout(() => {
+                blueLine.style.animation = `riseOutFade ${lineExitDuration}ms ease-in forwards`;
+            }, lineDropDuration + pauseAfterDrop + logoSlideDuration + visibleHold + retractDuration);
+
+            // STEP 5: Cleanup overlay
+            setTimeout(() => {
+                entryAnimation.style.display = 'none';
+                sessionStorage.setItem('entryAnimationShown', 'true');
+            }, lineDropDuration + pauseAfterDrop + logoSlideDuration + visibleHold + retractDuration + lineExitDuration + 50);
+        });
+        </script>
+    </div>
+    
+    <!-- Navigation -->
+    <nav style="background: white; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); padding: 0 2rem; position: relative; z-index: 100;">
+        <div style="max-width: 100%; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; height: 4rem;">
+            <!-- Logo -->
+            <div class="nav-logo">
+                <img src="/static/images/ColumbusLogo.png" alt="Columbus AI" onerror="this.src='/static/images/columbus-Refined.png'">
+                <div class="nav-logo-content">
+                    <span class="nav-logo-text">Columbus AI</span>
+                    <div class="nav-logo-tagline">By Agiliz NV · <span class="text-brand-accent">Data-Driven Impact</span></div>
+                </div>
+            </div>
+
+            <!-- Burger Menu Button (Mobile) -->
+            <button 
+                @click="showMobileMenu = !showMobileMenu"
+                class="lg:hidden flex flex-col items-center justify-center w-10 h-10 gap-1.5 focus:outline-none"
+                aria-label="Toggle menu"
+            >
+                <span 
+                    class="block w-6 h-0.5 bg-gray-800 transition-all duration-300"
+                    :class="showMobileMenu ? 'rotate-45 translate-y-2' : ''"
+                ></span>
+                <span 
+                    class="block w-6 h-0.5 bg-gray-800 transition-all duration-300"
+                    :class="showMobileMenu ? 'opacity-0' : ''"
+                ></span>
+                <span 
+                    class="block w-6 h-0.5 bg-gray-800 transition-all duration-300"
+                    :class="showMobileMenu ? '-rotate-45 -translate-y-2' : ''"
+                ></span>
+            </button>
+
+            <!-- Navigation Links (Desktop) -->
+            <div class="hidden lg:flex gap-2">
+                <a href="{% url 'companies:index' %}" class="nav-link {% if 'companies' in request.path %}active{% endif %}">
+                    Companies
+                </a>
+                <a href="{% url 'jobs:index' %}" class="nav-link {% if 'jobs' in request.path %}active{% endif %}">
+                    Jobs
+                </a>
+                <a href="{% url 'dashboard:index' %}" class="nav-link {% if request.resolver_match.url_name == 'index' and 'dashboard' in request.path %}active{% endif %}">
+                    Dashboard
+                </a>
+                <a href="{% url 'configuration:index' %}" class="nav-link {% if 'configuration' in request.path %}active{% endif %}">
+                    Configuration
+                </a>
+                <a href="{% url 'dashboard:skills_registry' %}" class="nav-link {% if 'skills-registry' in request.path %}active{% endif %}">
+                    Skills Registry
+                </a>
+            </div>
+
+            <!-- User Menu (Desktop) -->
+            <div class="hidden lg:flex user-menu">
+                <span class="username-display">{{ request.session.username }}</span>
+                <form method="POST" action="{% url 'logout' %}" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" class="logout-btn">
+                        Logout
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Mobile Menu Panel -->
+        <div 
+            x-show="showMobileMenu"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 -translate-y-4"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 translate-y-0"
+            x-transition:leave-end="opacity-0 -translate-y-4"
+            @click.away="showMobileMenu = false"
+            class="lg:hidden absolute top-full left-0 right-0 bg-white shadow-lg border-t border-gray-200"
+            style="display: none;"
+        >
+            <div class="flex flex-col p-4 space-y-2">
+                <!-- Mobile Navigation Links -->
+                <a href="{% url 'companies:index' %}" class="nav-link {% if 'companies' in request.path %}active{% endif %}" @click="showMobileMenu = false">
+                    Companies
+                </a>
+                <a href="{% url 'jobs:index' %}" class="nav-link {% if 'jobs' in request.path %}active{% endif %}" @click="showMobileMenu = false">
+                    Jobs
+                </a>
+                <a href="{% url 'dashboard:index' %}" class="nav-link {% if request.resolver_match.url_name == 'index' and 'dashboard' in request.path %}active{% endif %}" @click="showMobileMenu = false">
+                    Dashboard
+                </a>
+                <a href="{% url 'configuration:index' %}" class="nav-link {% if 'configuration' in request.path %}active{% endif %}" @click="showMobileMenu = false">
+                    Configuration
+                </a>
+                <a href="{% url 'dashboard:skills_registry' %}" class="nav-link {% if 'skills-registry' in request.path %}active{% endif %}" @click="showMobileMenu = false">
+                    Skills Registry
+                </a>
+                
+                <!-- Mobile User Menu -->
+                <div class="pt-4 mt-4 border-t border-gray-200 flex flex-col gap-3">
+                    <span class="username-display">{{ request.session.username }}</span>
+                    <form method="POST" action="{% url 'logout' %}" style="margin: 0;">
+                        {% csrf_token %}
+                        <button type="submit" class="logout-btn w-full">
+                            Logout
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Backdrop for Mobile Menu -->
+    <div 
+        x-show="showMobileMenu"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        @click="showMobileMenu = false"
+        class="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-[90]"
+        style="display: none;"
+    ></div>
+
+    <!-- Messages -->
+    {% if messages %}
+        <div class="content-wrapper">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Main Content -->
+    <main class="content-wrapper">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p>
+            Powered by <a href="https://agiliz.nl" target="_blank">Agiliz NV</a> | 
+            Columbus AI Sales Intelligence Platform
+        </p>
+    </footer>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

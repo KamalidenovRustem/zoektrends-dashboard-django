@@ -1,0 +1,577 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Skills Registry - Columbus AI{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Custom Scrollbar */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div 
+    x-data="skillsRegistryData()"
+    x-init="init()"
+    class="h-[calc(100vh-64px)] bg-gray-50 overflow-hidden flex flex-col"
+>
+    <!-- Header -->
+    <div class="bg-white border-b border-gray-200 px-6 py-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Skills Registry</h1>
+                <p class="text-sm text-gray-600 mt-1">
+                    Manage skill definitions and keywords for job matching
+                </p>
+            </div>
+            <button
+                @click="openAddModal()"
+                class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-md"
+            >
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add New Skill
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="bg-white border-b border-gray-200 px-6 py-3">
+        <div class="grid grid-cols-4 gap-4">
+            <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-3">
+                <div class="text-sm text-blue-600 font-medium">Total Skills</div>
+                <div class="text-2xl font-bold text-blue-900" x-text="skills.length"></div>
+            </div>
+            <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-3">
+                <div class="text-sm text-green-600 font-medium">Active Skills</div>
+                <div class="text-2xl font-bold text-green-900" x-text="skills.filter(s => s.is_active).length"></div>
+            </div>
+            <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-3">
+                <div class="text-sm text-purple-600 font-medium">Primary Skills</div>
+                <div class="text-2xl font-bold text-purple-900" x-text="skills.filter(s => s.is_primary).length"></div>
+            </div>
+            <div class="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-3">
+                <div class="text-sm text-orange-600 font-medium">Categories</div>
+                <div class="text-2xl font-bold text-orange-900" x-text="new Set(skills.map(s => s.category)).size"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white border-b border-gray-200 px-6 py-4">
+        <div class="flex items-center gap-4">
+            <div class="flex-1">
+                <input
+                    type="text"
+                    x-model="searchQuery"
+                    @input="filterSkills()"
+                    placeholder="Search skills, keywords, or categories..."
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+            </div>
+            <select
+                x-model="categoryFilter"
+                @change="filterSkills()"
+                class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+                <option value="">All Categories</option>
+                <template x-for="cat in categories" :key="cat">
+                    <option :value="cat" x-text="cat"></option>
+                </template>
+            </select>
+            <select
+                x-model="vendorFilter"
+                @change="filterSkills()"
+                class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+                <option value="">All Vendors</option>
+                <template x-for="vendor in vendors" :key="vendor">
+                    <option :value="vendor" x-text="vendor"></option>
+                </template>
+            </select>
+            <select
+                x-model="statusFilter"
+                @change="filterSkills()"
+                class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+                <option value="all">All Status</option>
+                <option value="active">Active Only</option>
+                <option value="inactive">Inactive Only</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Skills Table -->
+    <div class="flex-1 overflow-auto custom-scrollbar">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50 sticky top-0 z-10">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Skill</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Keywords</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                <template x-for="skill in filteredSkills" :key="skill.skill_id">
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center">
+                                <div>
+                                    <div class="text-sm font-medium text-gray-900" x-text="skill.skill_name"></div>
+                                    <div class="text-xs text-gray-500" x-text="skill.skill_id"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex flex-wrap gap-1">
+                                <template x-for="keyword in (skill.skill_keywords || []).slice(0, 3)" :key="keyword">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800" x-text="keyword"></span>
+                                </template>
+                                <span x-show="(skill.skill_keywords || []).length > 3" class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">
+                                    +<span x-text="(skill.skill_keywords || []).length - 3"></span>
+                                </span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-900" x-text="skill.category"></td>
+                        <td class="px-6 py-4 text-sm text-gray-900" x-text="skill.vendor"></td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-2">
+                                <span x-show="skill.is_active" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Active
+                                </span>
+                                <span x-show="!skill.is_active" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    Inactive
+                                </span>
+                                <span x-show="skill.is_primary" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                    Primary
+                                </span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-right text-sm font-medium">
+                            <button
+                                @click="openEditModal(skill)"
+                                class="text-blue-600 hover:text-blue-900 mr-3"
+                            >
+                                Edit
+                            </button>
+                            <button
+                                @click="toggleActive(skill)"
+                                class="text-orange-600 hover:text-orange-900 mr-3"
+                                x-text="skill.is_active ? 'Deactivate' : 'Activate'"
+                            ></button>
+                            <button
+                                @click="deleteSkill(skill)"
+                                class="text-red-600 hover:text-red-900"
+                            >
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+
+        <!-- Loading State -->
+        <div x-show="loading" class="flex items-center justify-center h-64">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+
+        <!-- Empty State -->
+        <div x-show="!loading && filteredSkills.length === 0" class="text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No skills found</h3>
+            <p class="mt-1 text-sm text-gray-500">Try adjusting your filters</p>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+<div
+    x-show="showModal"
+    x-transition:enter="transition ease-out duration-300"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100"
+    x-transition:leave="transition ease-in duration-200"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+    style="display: none;"
+    @click.self="closeModal()"
+>
+    <div
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 transform scale-95"
+        x-transition:enter-end="opacity-100 transform scale-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100 transform scale-100"
+        x-transition:leave-end="opacity-0 transform scale-95"
+        class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+    >
+        <!-- Modal Header -->
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-4 rounded-t-lg flex items-center justify-between">
+            <h3 class="text-lg font-bold" x-text="editMode ? 'Edit Skill' : 'Add New Skill'"></h3>
+            <button @click="closeModal()" class="text-white hover:text-gray-200">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-6 space-y-4">
+            <!-- Skill ID -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Skill ID *</label>
+                <input
+                    type="text"
+                    x-model="formData.skill_id"
+                    :disabled="editMode"
+                    placeholder="e.g., gcp_bigquery"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                />
+                <p class="text-xs text-gray-500 mt-1">Unique identifier (lowercase, underscores)</p>
+            </div>
+
+            <!-- Skill Name -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Skill Name *</label>
+                <input
+                    type="text"
+                    x-model="formData.skill_name"
+                    placeholder="e.g., BigQuery"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+            </div>
+
+            <!-- Keywords -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Keywords (comma-separated)</label>
+                <textarea
+                    x-model="formData.keywords_text"
+                    placeholder="bigquery, big query, bq"
+                    rows="3"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                ></textarea>
+                <p class="text-xs text-gray-500 mt-1">Alternative names and variations (comma-separated)</p>
+            </div>
+
+            <!-- Category -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <input
+                    type="text"
+                    x-model="formData.category"
+                    placeholder="e.g., GCP Data"
+                    list="categories"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <datalist id="categories">
+                    <template x-for="cat in categories" :key="cat">
+                        <option :value="cat"></option>
+                    </template>
+                </datalist>
+            </div>
+
+            <!-- Vendor -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Vendor</label>
+                <input
+                    type="text"
+                    x-model="formData.vendor"
+                    placeholder="e.g., Google Cloud"
+                    list="vendors"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <datalist id="vendors">
+                    <template x-for="vendor in vendors" :key="vendor">
+                        <option :value="vendor"></option>
+                    </template>
+                </datalist>
+            </div>
+
+            <!-- Checkboxes -->
+            <div class="flex items-center gap-6">
+                <label class="flex items-center">
+                    <input
+                        type="checkbox"
+                        x-model="formData.is_primary"
+                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="ml-2 text-sm text-gray-700">Primary Skill</span>
+                </label>
+                <label class="flex items-center">
+                    <input
+                        type="checkbox"
+                        x-model="formData.is_active"
+                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="ml-2 text-sm text-gray-700">Active</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="bg-gray-50 px-6 py-4 rounded-b-lg flex items-center justify-end gap-3">
+            <button
+                @click="closeModal()"
+                class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+            >
+                Cancel
+            </button>
+            <button
+                @click="saveSkill()"
+                :disabled="saving"
+                class="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all disabled:opacity-50"
+            >
+                <span x-show="!saving" x-text="editMode ? 'Update Skill' : 'Add Skill'"></span>
+                <span x-show="saving">Saving...</span>
+            </button>
+        </div>
+    </div>
+</div>
+</div>
+
+<script>
+function skillsRegistryData() {
+    return {
+        skills: [],
+        filteredSkills: [],
+        loading: true,
+        showModal: false,
+        editMode: false,
+        saving: false,
+        searchQuery: '',
+        categoryFilter: '',
+        vendorFilter: '',
+        statusFilter: 'all',
+        categories: [],
+        vendors: [],
+        formData: {
+            skill_id: '',
+            skill_name: '',
+            keywords_text: '',
+            category: '',
+            vendor: '',
+            is_primary: true,
+            is_active: true
+        },
+
+        init() {
+            this.loadSkills();
+        },
+
+        async loadSkills() {
+            try {
+                this.loading = true;
+                const response = await fetch('/dashboard/skills-registry/list/');
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.skills = data.skills;
+                    this.filteredSkills = data.skills;
+                    
+                    // Extract unique categories and vendors
+                    this.categories = [...new Set(data.skills.map(s => s.category).filter(Boolean))].sort();
+                    this.vendors = [...new Set(data.skills.map(s => s.vendor).filter(Boolean))].sort();
+                }
+            } catch (error) {
+                console.error('Failed to load skills:', error);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        filterSkills() {
+            let filtered = this.skills;
+
+            // Search filter
+            if (this.searchQuery) {
+                const query = this.searchQuery.toLowerCase();
+                filtered = filtered.filter(skill => 
+                    skill.skill_name.toLowerCase().includes(query) ||
+                    skill.skill_id.toLowerCase().includes(query) ||
+                    (skill.skill_keywords || []).some(k => k.toLowerCase().includes(query)) ||
+                    (skill.category || '').toLowerCase().includes(query) ||
+                    (skill.vendor || '').toLowerCase().includes(query)
+                );
+            }
+
+            // Category filter
+            if (this.categoryFilter) {
+                filtered = filtered.filter(s => s.category === this.categoryFilter);
+            }
+
+            // Vendor filter
+            if (this.vendorFilter) {
+                filtered = filtered.filter(s => s.vendor === this.vendorFilter);
+            }
+
+            // Status filter
+            if (this.statusFilter === 'active') {
+                filtered = filtered.filter(s => s.is_active);
+            } else if (this.statusFilter === 'inactive') {
+                filtered = filtered.filter(s => !s.is_active);
+            }
+
+            this.filteredSkills = filtered;
+        },
+
+        openAddModal() {
+            this.editMode = false;
+            this.formData = {
+                skill_id: '',
+                skill_name: '',
+                keywords_text: '',
+                category: '',
+                vendor: '',
+                is_primary: true,
+                is_active: true
+            };
+            this.showModal = true;
+        },
+
+        openEditModal(skill) {
+            this.editMode = true;
+            this.formData = {
+                skill_id: skill.skill_id,
+                skill_name: skill.skill_name,
+                keywords_text: (skill.skill_keywords || []).join(', '),
+                category: skill.category || '',
+                vendor: skill.vendor || '',
+                is_primary: skill.is_primary,
+                is_active: skill.is_active
+            };
+            this.showModal = true;
+        },
+
+        closeModal() {
+            this.showModal = false;
+        },
+
+        async saveSkill() {
+            if (!this.formData.skill_id || !this.formData.skill_name) {
+                alert('Skill ID and Skill Name are required');
+                return;
+            }
+
+            try {
+                this.saving = true;
+                const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+                
+                const response = await fetch('/dashboard/skills-registry/save/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({
+                        ...this.formData,
+                        skill_keywords: this.formData.keywords_text
+                            .split(',')
+                            .map(k => k.trim())
+                            .filter(k => k)
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.closeModal();
+                    this.loadSkills();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Failed to save skill:', error);
+                alert('Failed to save skill');
+            } finally {
+                this.saving = false;
+            }
+        },
+
+        async toggleActive(skill) {
+            if (!confirm(`Are you sure you want to ${skill.is_active ? 'deactivate' : 'activate'} ${skill.skill_name}?`)) {
+                return;
+            }
+
+            try {
+                const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+                
+                const response = await fetch('/dashboard/skills-registry/toggle-active/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({
+                        skill_id: skill.skill_id,
+                        is_active: !skill.is_active
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.loadSkills();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Failed to toggle status:', error);
+            }
+        },
+
+        async deleteSkill(skill) {
+            if (!confirm(`Are you sure you want to delete ${skill.skill_name}? This action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+                
+                const response = await fetch('/dashboard/skills-registry/delete/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({
+                        skill_id: skill.skill_id
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.loadSkills();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Failed to delete skill:', error);
+            }
+        }
+    };
+}
+</script>
+{% endblock %}

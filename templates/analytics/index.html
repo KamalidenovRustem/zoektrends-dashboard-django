@@ -1,0 +1,435 @@
+{% extends 'base.html' %}
+
+{% block title %}Analytics Dashboard - Columbus AI{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-6">
+    <!-- Header -->
+    <div class="mb-4 flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-brand-dark">
+                Job Market Analytics
+            </h1>
+            <p class="mt-1 text-sm text-gray-600">
+                Real-time insights powered by Looker
+            </p>
+        </div>
+        
+        <!-- Quick Filters (Optional) -->
+        <div class="flex gap-2">
+            <button onclick="refreshDashboard()" class="btn-outline-brand">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Looker Dashboard & AI Chat Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Looker Dashboard Embed (2/3 width) -->
+        <div class="lg:col-span-2 card p-0 overflow-hidden">
+            <div class="relative" style="height: calc(100vh - 240px); min-height: 700px;">
+                <iframe
+                    id="looker-dashboard"
+                    src="https://datasight.cloud.looker.com/embed/dashboards/69?Country=&Status=&Job+Status=&Technology=&embed_domain={{ request.get_host }}"
+                    frameborder="0"
+                    width="100%"
+                    height="100%"
+                    allowtransparency
+                    allow="clipboard-read; clipboard-write"
+                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads"
+                    style="border: none; display: block;"
+                ></iframe>
+            </div>
+        </div>
+
+        <!-- AI Chat Interface (1/3 width) -->
+        <div class="lg:col-span-1">
+            <div class="card p-0 overflow-hidden flex flex-col" style="height: calc(100vh - 180px); min-height: 755px;">
+                <div class="px-4 py-2 border-b border-gray-200 bg-gray-50">
+                    <h2 class="text-sm font-semibold text-brand-dark">AI Assistant</h2>
+                </div>
+                
+                <!-- Chat Messages Container -->
+                <div id="chatMessages" class="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
+                    <!-- Welcome Message -->
+                    <div class="flex items-start space-x-3">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <div class="bg-white rounded-lg shadow-sm p-4 border-l-4 border-purple-500">
+                                <div class="flex items-center gap-2 mb-2">
+                                    <p class="text-sm font-semibold text-gray-900">AI Analytics Assistant</p>
+                                    <span class="px-2 py-0.5 text-xs font-medium bg-gradient-to-r from-purple-100 to-blue-100 text-purple-700 rounded-full">Gemini 2.5 Pro</span>
+                                </div>
+                                <p class="text-sm text-gray-700 mb-2">Hello! I can help you with:</p>
+                                <ul class="text-sm text-gray-600 space-y-1 ml-4">
+                                    <li>📊 Analyze job market trends and patterns</li>
+                                    <li>🏢 Identify top companies and technologies</li>
+                                    <li>📈 Explain dashboard metrics and insights</li>
+                                    <li>📧 Guide you to company contact details</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Chat Input -->
+                <div class="px-6 py-4 border-t border-gray-200 bg-white">
+                    <form id="chatForm" class="flex space-x-2">
+                        <input 
+                            type="text" 
+                            id="chatInput" 
+                            placeholder="Ask me about job trends, companies, or technologies..." 
+                            class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                        >
+                        <button 
+                            type="submit" 
+                            class="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                            </svg>
+                        </button>
+                    </form>
+                    <p class="text-xs text-gray-500 mt-2 text-center">Powered by Google Gemini 2.5 Pro • Your data stays private</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Info (Optional) -->
+    <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="card">
+            <div class="flex items-center gap-3">
+                <div class="p-3 rounded-lg bg-blue-100">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Dashboard</p>
+                    <p class="text-lg font-semibold text-brand-dark">Job Market Trends</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center gap-3">
+                <div class="p-3 rounded-lg bg-green-100">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Status</p>
+                    <p class="text-lg font-semibold text-brand-dark">Live Data</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center gap-3">
+                <div class="p-3 rounded-lg bg-purple-100">
+                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-600">Last Updated</p>
+                    <p class="text-lg font-semibold text-brand-dark" id="last-updated">--:--</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Refresh dashboard
+function refreshDashboard() {
+    const iframe = document.getElementById('looker-dashboard');
+    const currentSrc = iframe.src;
+    
+    // Add timestamp to force refresh
+    const separator = currentSrc.includes('?') ? '&' : '?';
+    iframe.src = currentSrc.split('&_refresh=')[0] + separator + '_refresh=' + Date.now();
+    
+    // Show loading indicator
+    showNotification('Refreshing dashboard...', 'info');
+}
+
+// Update timestamp
+function updateLastUpdated() {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit'
+    });
+    const element = document.getElementById('last-updated');
+    if (element) {
+        element.textContent = timeString;
+    }
+}
+
+// Listen for Looker events
+window.addEventListener('message', (event) => {
+    // Verify origin
+    if (event.origin !== 'https://datasight.cloud.looker.com') return;
+    
+    console.log('Looker event:', event.data);
+    
+    // Handle dashboard loaded
+    if (event.data.type === 'dashboard:loaded') {
+        updateLastUpdated();
+        showNotification('Dashboard loaded successfully', 'success');
+    }
+    
+    // Handle errors
+    if (event.data.type === 'error') {
+        console.error('Looker error:', event.data);
+        showNotification('Error loading dashboard', 'error');
+    }
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    updateLastUpdated();
+    
+    // Update timestamp every minute
+    setInterval(updateLastUpdated, 60000);
+});
+
+// Simple notification helper
+function showNotification(message, type = 'info') {
+    // You can integrate with your existing notification system
+    console.log(`[${type.toUpperCase()}] ${message}`);
+}
+
+// AI Chat functionality with Gemini integration
+document.addEventListener('DOMContentLoaded', function() {
+    const chatForm = document.getElementById('chatForm');
+    const chatInput = document.getElementById('chatInput');
+    const chatMessages = document.getElementById('chatMessages');
+    
+    if (chatForm) {
+        chatForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const message = chatInput.value.trim();
+            if (!message) return;
+            
+            // Disable input while processing
+            chatInput.disabled = true;
+            chatForm.querySelector('button').disabled = true;
+            
+            // Add user message
+            addChatMessage(message, 'user');
+            chatInput.value = '';
+            
+            // Show typing indicator
+            const typingId = showTypingIndicator();
+            
+            try {
+                // Get CSRF token
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                                 document.querySelector('meta[name="csrf-token"]')?.content;
+                
+                // Call backend API
+                const response = await fetch('{% url "dashboard:analytics_chat" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+                
+                const data = await response.json();
+                
+                // Remove typing indicator
+                removeTypingIndicator(typingId);
+                
+                if (data.success) {
+                    addChatMessage(data.message, 'ai');
+                } else {
+                    addChatMessage(data.message || 'Sorry, I encountered an error. Please try again.', 'ai', true);
+                }
+            } catch (error) {
+                // Remove typing indicator
+                removeTypingIndicator(typingId);
+                
+                console.error('Chat error:', error);
+                addChatMessage('Sorry, I\'m having trouble connecting. Please try again in a moment.', 'ai', true);
+            } finally {
+                // Re-enable input
+                chatInput.disabled = false;
+                chatForm.querySelector('button').disabled = false;
+                chatInput.focus();
+            }
+        });
+    }
+});
+
+function showTypingIndicator() {
+    const chatMessages = document.getElementById('chatMessages');
+    const id = 'typing-' + Date.now();
+    
+    const typingHtml = `
+        <div id="${id}" class="flex items-start space-x-3">
+            <div class="flex-shrink-0">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+            </div>
+            <div class="flex-1">
+                <div class="bg-white rounded-lg shadow-sm p-4">
+                    <div class="flex space-x-2">
+                        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0ms"></div>
+                        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 150ms"></div>
+                        <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 300ms"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    chatMessages.insertAdjacentHTML('beforeend', typingHtml);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+    
+    return id;
+}
+
+function removeTypingIndicator(id) {
+    const element = document.getElementById(id);
+    if (element) {
+        element.remove();
+    }
+}
+
+function formatMarkdown(text) {
+    // Convert markdown to HTML
+    // Bold **text**
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // Italic *text*
+    text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    
+    // Links [text](url)
+    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-blue-600 hover:text-blue-800 underline">$1</a>');
+    
+    // Bullet points
+    text = text.replace(/^[•\-\*]\s+(.+)$/gm, '<li class="ml-4">$1</li>');
+    text = text.replace(/(<li[^>]*>.*<\/li>)/s, '<ul class="list-disc space-y-1 my-2">$1</ul>');
+    
+    // Line breaks
+    text = text.replace(/\n\n/g, '</p><p class="mt-2">');
+    text = '<p>' + text + '</p>';
+    
+    return text;
+}
+
+function addChatMessage(message, sender = 'user', isError = false) {
+    const chatMessages = document.getElementById('chatMessages');
+    
+    if (sender === 'user') {
+        const messageHtml = `
+            <div class="flex items-start space-x-3 justify-end">
+                <div class="flex-1 text-right">
+                    <div class="inline-block bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg shadow-sm p-4 max-w-md">
+                        <p class="text-sm">${escapeHtml(message)}</p>
+                    </div>
+                </div>
+                <div class="flex-shrink-0">
+                    <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        `;
+        chatMessages.insertAdjacentHTML('beforeend', messageHtml);
+    } else {
+        const formattedMessage = formatMarkdown(escapeHtml(message));
+        const borderClass = isError ? 'border-l-4 border-red-500' : 'border-l-4 border-purple-500';
+        
+        const messageHtml = `
+            <div class="flex items-start space-x-3">
+                <div class="flex-shrink-0">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <div class="bg-white rounded-lg shadow-sm p-4 ${borderClass}">
+                        <div class="text-sm text-gray-700 prose prose-sm max-w-none">${formattedMessage}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+        chatMessages.insertAdjacentHTML('beforeend', messageHtml);
+    }
+    
+    // Scroll to bottom
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+
+<style>
+/* Ensure iframe takes full height */
+#looker-dashboard {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Loading state */
+.card:has(#looker-dashboard) {
+    position: relative;
+}
+
+.card:has(#looker-dashboard)::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--brand-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .card:has(#looker-dashboard) {
+        height: 600px !important;
+        min-height: 600px !important;
+    }
+}
+</style>
+{% endblock %}

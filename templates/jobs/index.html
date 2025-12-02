@@ -1,0 +1,1031 @@
+{% extends 'base.html' %}
+
+{% block title %}Job Listings - Columbus AI{% endblock %}
+
+{% block extra_head %}
+<style>
+    .job-card {
+        transition: all 0.2s;
+    }
+    .job-card:hover {
+        transform: translateY(-2px);
+    }
+    .job-card.selected {
+        border-color: var(--brand-accent) !important;
+        box-shadow: 0 0 0 2px rgba(247, 30, 124, 0.1);
+    }
+    .filter-input {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.5rem;
+    }
+    .filter-input:focus {
+        outline: none;
+        border-color: var(--brand-dark);
+        ring: 2px;
+        ring-color: var(--brand-dark);
+    }
+    .tech-badge {
+        background: linear-gradient(135deg, #eff6ff 0%, #fce7f3 100%);
+        color: #1f2937;
+        border: 1px solid #dbeafe;
+        padding: 0.25rem 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .source-badge-linkedin { background: #0077b5; color: white; }
+    .source-badge-adzuna { background: #10b981; color: white; }
+    .source-badge-arbeitnow { background: #8b5cf6; color: white; }
+    .source-badge-serpapi { background: #f59e0b; color: white; }
+    .source-badge-default { background: #f3f4f6; color: #1f2937; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div x-data="jobsPage()" x-init="init()">
+    <!-- Recent Jobs Notice -->
+    <template x-if="filters.posted_within">
+        <div class="mb-4" style="background: linear-gradient(to right, #eff6ff, #eef2ff); border: 1px solid #bfdbfe; border-radius: 0.5rem; padding: 0.75rem 1rem;">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <svg class="h-5 w-5 mr-2" style="color: var(--brand-dark);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="text-sm font-medium" style="color: var(--brand-dark);" x-text="'Showing jobs posted within ' + getPostedWithinLabel() + ' & fetched in last 24 hours'"></span>
+                </div>
+                <a href="{% url 'jobs:index' %}" class="text-sm hover:underline" style="color: var(--brand-accent); font-weight: 600;">
+                    View all jobs
+                </a>
+            </div>
+        </div>
+    </template>
+
+    <!-- 3-Column Layout with Sliding Panels -->
+    <div class="flex gap-6 overflow-x-auto" style="height: calc(100vh - 8rem);">
+        
+        <!-- LEFT: Filters -->
+        <div class="flex-shrink-0" style="width: 320px;">
+            <div class="bg-white shadow rounded-lg h-full overflow-y-auto sticky top-6">
+                <div class="px-4 py-4 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold" style="color: var(--brand-dark);">Filters & Search</h2>
+                    <p class="text-xs text-gray-500 mt-1" x-text="getActiveFilterCount() + ' filter(s) active'"></p>
+                    <button @click="resetFilters()" class="mt-2 text-sm hover:underline" style="color: var(--brand-accent);">
+                        Clear All Filters
+                    </button>
+                </div>
+                
+                <div class="px-4 py-4 space-y-4">
+                    <!-- Keyword Search -->
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Keyword Search</label>
+                        <input 
+                            type="text" 
+                            x-model="filters.keyword" 
+                            @keyup.debounce.500ms="applyFilters()" 
+                            placeholder="Search jobs..." 
+                            class="filter-input"
+                        >
+                    </div>
+
+                    <!-- Search Keywords Checklist -->
+                    <div class="border-t border-gray-200 pt-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-xs font-medium text-gray-700">Search Keywords</label>
+                            <button 
+                                @click="showAllKeywords = !showAllKeywords" 
+                                class="text-xs hover:underline"
+                                style="color: var(--brand-accent);"
+                                x-text="showAllKeywords ? 'Show Less' : 'Show All'"
+                            ></button>
+                        </div>
+                        <div class="space-y-2 max-h-64 overflow-y-auto pr-2">
+                            <template x-for="(kwData, index) in (showAllKeywords ? availableKeywords : availableKeywords.slice(0, 10))" :key="kwData.keyword">
+                                <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1.5 rounded transition-colors">
+                                    <input 
+                                        type="checkbox" 
+                                        :value="kwData.keyword"
+                                        :checked="selectedKeywords.includes(kwData.keyword)"
+                                        @change="toggleKeyword(kwData.keyword)"
+                                        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                    >
+                                    <div class="flex-1 flex items-center justify-between">
+                                        <span class="text-sm text-gray-700" x-text="kwData.keyword"></span>
+                                        <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-gradient-to-r from-blue-50 to-pink-50 text-gray-600" x-text="kwData.count"></span>
+                                    </div>
+                                </label>
+                            </template>
+                        </div>
+                        <template x-if="selectedKeywords.length > 0">
+                            <button 
+                                @click="clearSelectedKeywords()" 
+                                class="mt-2 text-xs hover:underline text-gray-600"
+                            >
+                                Clear selected (<span x-text="selectedKeywords.length"></span>)
+                            </button>
+                        </template>
+                    </div>
+
+                    <!-- Source -->
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Source</label>
+                        <select x-model="filters.source" @change="applyFilters()" class="filter-input">
+                            <option value="">All Sources</option>
+                            <option value="linkedin">LinkedIn</option>
+                            <option value="adzuna">Adzuna</option>
+                            <option value="arbeitnow">ArbeItNow</option>
+                        </select>
+                    </div>
+
+                    <!-- Country -->
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Country</label>
+                        <select x-model="filters.country" @change="applyFilters()" class="filter-input">
+                            <option value="">All Countries</option>
+                            <template x-for="country in countries" :key="country">
+                                <option :value="country" x-text="country"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <!-- Tech Stack -->
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Tech Stack</label>
+                        <select x-model="filters.tech_stack" @change="applyFilters()" class="filter-input">
+                            <option value="">All Tech Stacks</option>
+                            <template x-for="tech in techStacks" :key="tech">
+                                <option :value="tech" x-text="tech"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <!-- Posted Date -->
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Posted Date</label>
+                        <select x-model="filters.posted_within" @change="applyFilters()" class="filter-input">
+                            <option value="">All Time</option>
+                            <option value="1">Last 24 Hours</option>
+                            <option value="3">Last 3 Days</option>
+                            <option value="7">Last Week</option>
+                            <option value="14">Last 2 Weeks</option>
+                            <option value="30">Last Month</option>
+                            <option value="90">Last 3 Months</option>
+                        </select>
+                    </div>
+
+                    <!-- Sort By -->
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Sort By</label>
+                        <select x-model="filters.sort_by" @change="applyFilters()" class="filter-input">
+                            <option value="scraped_at">Recent Fetch</option>
+                            <option value="posted_date">Recent Posted</option>
+                        </select>
+                    </div>
+
+                    <!-- Per Page -->
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 mb-1">Per Page</label>
+                        <select x-model="filters.limit" @change="applyFilters()" class="filter-input">
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="200">200</option>
+                        </select>
+                    </div>
+
+                    <!-- Results Count -->
+                    <div class="pt-3 border-t border-gray-200">
+                        <p class="text-sm text-gray-600">
+                            <span class="font-semibold" style="color: var(--brand-dark);" x-text="jobs.length"></span> jobs found
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CENTER: Job List -->
+        <div class="flex-1 overflow-y-auto" style="min-width: 500px;">
+            <template x-if="loading">
+                <div class="text-center py-12">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2" style="border-color: var(--brand-dark);"></div>
+                    <p class="mt-2 text-sm text-gray-600">Loading jobs...</p>
+                </div>
+            </template>
+
+            <template x-if="!loading && jobs.length === 0">
+                <div class="bg-white shadow rounded-lg p-8 text-center">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No jobs found</h3>
+                    <p class="mt-1 text-sm text-gray-500">Try adjusting your filters</p>
+                </div>
+            </template>
+
+            <div class="space-y-3">
+                <template x-for="(job, index) in jobs" :key="job.job_id">
+                    <div 
+                        class="bg-white shadow rounded-lg hover:shadow-md cursor-pointer border-2 border-transparent job-card"
+                        :class="{'selected': selectedJobIndex === index}"
+                        @click="selectJob(index)"
+                    >
+                        <div class="p-4">
+                            <div class="flex items-start justify-between mb-2">
+                                <div class="flex-1 min-w-0">
+                                    <h3 class="text-base font-semibold text-gray-900 truncate" x-text="job.title"></h3>
+                                    <p class="text-sm text-gray-600 truncate" x-text="job.company"></p>
+                                </div>
+                                <span 
+                                    class="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium flex-shrink-0"
+                                    :class="getSourceBadgeClass(job.source)"
+                                    x-text="job.source"
+                                ></span>
+                            </div>
+
+                            <div class="flex items-center text-sm text-gray-600 mb-3">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                <span class="truncate" x-text="job.location"></span>
+                            </div>
+
+                            <!-- Search Keyword Badge -->
+                            <template x-if="job.search_keyword">
+                                <div class="mb-3">
+                                    <span 
+                                        class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold bg-gradient-to-r from-blue-50 to-pink-50 text-gray-800 border-2 border-blue-300 hover:border-blue-500 transition-colors cursor-pointer shadow-sm"
+                                        @click.stop="filters.keyword = job.search_keyword; applyFilters();"
+                                        :title="'Filter by: ' + job.search_keyword"
+                                        x-text="job.search_keyword"
+                                    ></span>
+                                </div>
+                            </template>
+
+                            <!-- Description Preview (3 lines) -->
+                            <template x-if="job.description">
+                                <p class="text-sm text-gray-700 mb-3 line-clamp-3" x-text="job.description"></p>
+                            </template>
+
+                            <!-- Metadata -->
+                            <div class="flex flex-wrap gap-3 text-xs text-gray-500">
+                                <div class="flex items-center">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                    <span x-text="getTimeAgo(job.scraped_at)"></span>
+                                </div>
+                                <div class="flex items-center">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <span x-text="getTimeAgo(job.posted_date)"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- RIGHT: Sliding Panels Container -->
+        <div class="flex gap-6 flex-shrink-0">
+            <!-- Job Details Panel -->
+            <div 
+                class="bg-white shadow rounded-lg overflow-y-auto sticky top-6 transition-all duration-500 ease-in-out"
+                :style="selectedJob ? 'width: 384px; opacity: 1; transform: translateX(0);' : 'width: 0; opacity: 0; transform: translateX(50px); overflow: hidden;'"
+            >
+                <template x-if="selectedJob !== null">
+                    <div class="p-6">
+                        <!-- Close Button -->
+                        <div class="flex items-start justify-between mb-4">
+                            <h2 class="text-xl font-bold text-gray-900">Job Details</h2>
+                            <button @click="selectedJob = null; selectedJobIndex = null; selectedCompany = null; showAIChat = false;" class="text-gray-400 hover:text-gray-600 transition-colors">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="space-y-4">
+                            <!-- Title & Company -->
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-900 mb-1" x-text="selectedJob.title"></h3>
+                                <button 
+                                    @click="viewCompany(selectedJob.company)"
+                                    class="text-lg hover:underline cursor-pointer transition-colors"
+                                    style="color: var(--brand-accent);"
+                                    x-text="selectedJob.company"
+                                ></button>
+                            </div>
+
+                            <!-- Badges -->
+                            <div class="flex flex-wrap gap-2">
+                                <!-- Search Keyword Badge (Most Important) -->
+                                <template x-if="selectedJob.search_keyword">
+                                    <span class="px-3 py-1.5 rounded-full text-sm font-semibold bg-gradient-to-r from-blue-50 to-pink-50 text-gray-800 border-2 border-blue-300 shadow-sm" x-text="selectedJob.search_keyword"></span>
+                                </template>
+                                
+                                <!-- Source Badge (Second Priority) -->
+                                <span 
+                                    class="px-3 py-1 rounded-full text-sm font-medium"
+                                    :class="getSourceBadgeClass(selectedJob.source)"
+                                    x-text="selectedJob.source"
+                                ></span>
+                                
+                                <!-- Country Badge -->
+                                <template x-if="selectedJob.country">
+                                    <span class="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border border-green-300" x-text="selectedJob.country"></span>
+                                </template>
+                            </div>
+
+                            <!-- Location -->
+                            <div class="flex items-center text-gray-700">
+                                <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                <span x-text="selectedJob.location"></span>
+                            </div>
+
+                            <!-- Tech Stack -->
+                            <template x-if="selectedJob.skills && selectedJob.skills.length > 0">
+                                <div>
+                                    <h4 class="text-sm font-semibold text-gray-900 mb-2">Tech Stack & Skills</h4>
+                                    <div class="flex flex-wrap gap-2">
+                                        <template x-for="skill in selectedJob.skills" :key="skill">
+                                            <span class="px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-blue-50 to-pink-50 text-gray-800 border border-blue-200" x-text="skill"></span>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Description -->
+                            <template x-if="selectedJob.description">
+                                <div>
+                                    <h4 class="text-sm font-semibold text-gray-900 mb-2">Job Description</h4>
+                                    <div class="text-sm text-gray-700 prose prose-sm max-w-none" x-html="selectedJob.description.replace(/\n/g, '<br>')"></div>
+                                </div>
+                            </template>
+
+                            <!-- Requirements -->
+                            <template x-if="selectedJob.requirements">
+                                <div>
+                                    <h4 class="text-sm font-semibold text-gray-900 mb-2">Requirements</h4>
+                                    <div class="text-sm text-gray-700 prose prose-sm max-w-none" x-html="selectedJob.requirements.replace(/\n/g, '<br>')"></div>
+                                </div>
+                            </template>
+
+                            <!-- Dates -->
+                            <div class="grid grid-cols-2 gap-4 pt-3 border-t border-gray-200">
+                                <div>
+                                    <p class="text-xs text-gray-500">Posted</p>
+                                    <p class="text-sm font-medium text-gray-900" x-text="selectedJob.posted_date"></p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500">Fetched</p>
+                                    <p class="text-sm font-medium text-gray-900" x-text="formatDate(selectedJob.scraped_at)"></p>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="pt-4 space-y-3">
+                                <template x-if="selectedJob.url">
+                                    <a 
+                                        :href="selectedJob.url" 
+                                        target="_blank"
+                                        class="inline-flex items-center justify-center w-full px-6 py-3 text-base font-medium text-white rounded-lg hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200"
+                                        style="background: linear-gradient(135deg, var(--brand-dark) 0%, var(--brand-accent) 100%);"
+                                    >
+                                        Apply for this position
+                                        <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                                        </svg>
+                                    </a>
+                                </template>
+
+                                <button 
+                                    @click="viewCompany(selectedJob.company)"
+                                    class="inline-flex items-center justify-center w-full px-6 py-3 text-base font-medium text-gray-700 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-200"
+                                >
+                                    View Company Details
+                                    <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Company Details Panel -->
+            <div 
+                class="bg-white shadow rounded-lg overflow-y-auto sticky top-6 transition-all duration-500 ease-in-out"
+                :style="selectedCompany ? 'width: 384px; opacity: 1; transform: translateX(0);' : 'width: 0; opacity: 0; transform: translateX(50px); overflow: hidden;'"
+            >
+                <template x-if="selectedCompany !== null">
+                    <div class="p-6">
+                        <!-- Close Button -->
+                        <div class="flex items-start justify-between mb-4">
+                            <h2 class="text-xl font-bold text-gray-900">Company Details</h2>
+                            <button @click="selectedCompany = null; showAIChat = false;" class="text-gray-400 hover:text-gray-600 transition-colors">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <template x-if="loadingCompany">
+                            <div class="text-center py-8">
+                                <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2" style="border-color: var(--brand-dark);"></div>
+                                <p class="mt-2 text-sm text-gray-600">Loading company details...</p>
+                            </div>
+                        </template>
+
+                        <template x-if="!loadingCompany && selectedCompany">
+                            <div class="space-y-4">
+                                <!-- Company Name -->
+                                <div>
+                                    <h3 class="text-xl font-bold text-gray-900 mb-1" x-text="selectedCompany.name"></h3>
+                                    <p class="text-sm text-gray-600" x-text="(selectedCompany.job_count || 0) + ' job opening' + (selectedCompany.job_count !== 1 ? 's' : '')"></p>
+                                </div>
+
+                                <!-- Company Status & Type Selectors -->
+                                <div class="bg-gradient-to-r from-blue-50 to-pink-50 border border-blue-200 rounded-lg p-4">
+                                    <h4 class="text-sm font-semibold text-gray-900 mb-3">Company Management</h4>
+                                    <div class="space-y-3">
+                                        <!-- Status Selector -->
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                                            <select 
+                                                x-model="selectedCompany.status"
+                                                @change="updateCompanyStatus()"
+                                                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            >
+                                                <option value="Undecided">Undecided</option>
+                                                <option value="Interesting">Interesting</option>
+                                                <option value="Shortlisted">Shortlisted</option>
+                                                <option value="Rejected">Rejected</option>
+                                                <option value="Contacted">Contacted</option>
+                                                <option value="Competitor">Competitor</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Company Type Selector -->
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Company Type</label>
+                                            <select 
+                                                x-model="selectedCompany.company_type"
+                                                @change="updateCompanyType()"
+                                                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            >
+                                                <option value="">-- Select Type --</option>
+                                                <option value="Technology">Technology</option>
+                                                <option value="Consulting">Consulting</option>
+                                                <option value="Data">Data</option>
+                                                <option value="ArtificialIntelligence">AI</option>
+                                                <option value="Cloud">Cloud</option>
+                                                <option value="Cybersecurity">Cybersecurity</option>
+                                                <option value="Marketing">Marketing</option>
+                                                <option value="Telecommunications">Telecommunications</option>
+                                                <option value="Finance">Finance</option>
+                                                <option value="Healthcare">Healthcare</option>
+                                                <option value="Other">Other</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Solution Domain Selector -->
+                                        <div>
+                                            <label class="block text-xs font-medium text-gray-700 mb-1">Solution Domain</label>
+                                            <select 
+                                                x-model="selectedCompany.solution_domain"
+                                                @change="updateSolutionDomain()"
+                                                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            >
+                                                <option value="">-- Select Domain --</option>
+                                                <option value="Data">Data</option>
+                                                <option value="Marketing">Marketing</option>
+                                                <option value="All">All</option>
+                                            </select>
+                                        </div>
+
+                                        <template x-if="selectedCompany.countries && selectedCompany.countries.length > 0">
+                                            <div class="pt-2 border-t border-gray-200">
+                                                <span class="text-xs font-medium text-gray-600">Countries:</span>
+                                                <span class="text-xs text-gray-800 ml-1" x-text="selectedCompany.countries.join(', ')"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                <!-- Tech Stack -->
+                                <template x-if="selectedCompany.tech_stack && selectedCompany.tech_stack.length > 0">
+                                    <div>
+                                        <h4 class="text-sm font-semibold text-gray-900 mb-2">Tech Stack</h4>
+                                        <div class="flex flex-wrap gap-2">
+                                            <template x-for="tech in selectedCompany.tech_stack" :key="tech">
+                                                <span class="inline-flex items-center px-2 py-1 rounded text-xs bg-gradient-to-r from-blue-50 to-pink-50 text-gray-700 border border-blue-200" x-text="tech"></span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <!-- Get Contact Details Button -->
+                                <div>
+                                    <button 
+                                        @click="getContactDetails()"
+                                        class="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2"
+                                    >
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+                                        </svg>
+                                        <span>Get Contact Details</span>
+                                    </button>
+                                </div>
+
+                                <!-- Jobs List -->
+                                <template x-if="selectedCompany.jobs && selectedCompany.jobs.length > 0">
+                                    <div>
+                                        <h4 class="text-sm font-semibold text-gray-900 mb-3 flex items-center justify-between">
+                                            <span>All Job Openings</span>
+                                            <span class="text-xs font-normal text-gray-500" x-text="selectedCompany.jobs.length + ' total'"></span>
+                                        </h4>
+                                        <div class="space-y-2 max-h-[calc(100vh-28rem)] overflow-y-auto pr-2">
+                                            <template x-for="(job, index) in selectedCompany.jobs" :key="job.job_id">
+                                                <div 
+                                                    class="bg-white border border-gray-200 rounded-lg p-3 hover:border-blue-300 hover:shadow-sm transition-all cursor-pointer"
+                                                    @click="selectJobFromCompany(job)"
+                                                >
+                                                    <div class="flex items-start justify-between mb-1">
+                                                        <h5 class="text-sm font-semibold text-gray-900 line-clamp-2 flex-1" x-text="job.title"></h5>
+                                                        <span 
+                                                            class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0"
+                                                            :class="getSourceBadgeClass(job.source)"
+                                                            x-text="job.source"
+                                                        ></span>
+                                                    </div>
+                                                    <div class="flex items-center text-xs text-gray-600 mb-1">
+                                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                        </svg>
+                                                        <span x-text="job.location"></span>
+                                                        <template x-if="job.country">
+                                                            <span class="ml-2 px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-800" x-text="job.country"></span>
+                                                        </template>
+                                                    </div>
+
+                                                    <template x-if="job.skills && job.skills.length > 0">
+                                                        <div class="flex flex-wrap gap-1 mt-2">
+                                                            <template x-for="skill in job.skills.slice(0, 3)" :key="skill">
+                                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-gradient-to-r from-blue-50 to-pink-50 text-gray-700 border border-blue-200" x-text="skill"></span>
+                                                            </template>
+                                                        </div>
+                                                    </template>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+
+            <!-- AI Chat Panel -->
+            <div 
+                class="bg-white shadow rounded-lg overflow-hidden sticky top-6 transition-all duration-500 ease-in-out"
+                :style="showAIChat ? 'width: 40rem; opacity: 1; transform: translateX(0);' : 'width: 0; opacity: 0; transform: translateX(50px); overflow: hidden;'"
+            >
+                <template x-if="showAIChat">
+                    <div class="flex flex-col h-full">
+                        <!-- Chat Header -->
+                        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between" style="background: linear-gradient(135deg, var(--brand-dark) 0%, var(--brand-accent) 100%);">
+                            <div class="flex items-center">
+                                <svg class="w-6 h-6 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+                                </svg>
+                                <h3 class="text-white font-semibold">Columbus AI Assistant</h3>
+                            </div>
+                            <button @click="showAIChat = false; chatMessages = [];" class="text-white hover:opacity-80">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Chat Messages -->
+                        <div class="flex-1 overflow-y-auto p-6 space-y-4" style="height: calc(100vh - 16rem);">
+                            <template x-if="chatMessages.length === 0">
+                                <div class="text-center text-gray-500 mt-8">
+                                    <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+                                    </svg>
+                                    <p class="text-sm">Ask me anything about this company or job!</p>
+                                </div>
+                            </template>
+
+                            <template x-for="(message, index) in chatMessages" :key="index">
+                                <div :class="message.role === 'user' ? 'flex justify-end' : 'flex justify-start'">
+                                    <div 
+                                        :class="message.role === 'user' ? 'bg-gradient-to-r from-pink-500 to-pink-600 text-white' : 'bg-gray-100 text-gray-900'"
+                                        class="max-w-xs lg:max-w-md px-4 py-2 rounded-lg text-sm"
+                                    >
+                                        <p x-text="message.content"></p>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="chatLoading">
+                                <div class="flex justify-start">
+                                    <div class="bg-gray-100 px-4 py-2 rounded-lg">
+                                        <div class="flex space-x-1">
+                                            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                                            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                                            <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Chat Input -->
+                        <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+                            <form @submit.prevent="sendChatMessage()">
+                                <div class="flex gap-2">
+                                    <input 
+                                        type="text"
+                                        x-model="chatInput"
+                                        placeholder="Ask about this company or job..."
+                                        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                                    >
+                                    <button 
+                                        type="submit"
+                                        :disabled="chatLoading || !chatInput.trim()"
+                                        class="px-6 py-2 rounded-lg text-white font-medium transition-opacity disabled:opacity-50"
+                                        style="background: linear-gradient(135deg, var(--brand-dark) 0%, var(--brand-accent) 100%);"
+                                    >
+                                        Send
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function jobsPage() {
+    return {
+        loading: true,
+        jobs: [],
+        allJobs: [], // Store all jobs before filtering
+        countries: [],
+        techStacks: [],
+        availableKeywords: [], // Extracted keywords with counts
+        selectedKeywords: [], // User-selected keywords
+        showAllKeywords: false,
+        selectedJobIndex: null,
+        selectedJob: null,
+        selectedCompany: null,
+        loadingCompany: false,
+        showAIChat: false,
+        chatMessages: [],
+        chatInput: '',
+        chatLoading: false,
+        filters: {
+            keyword: new URLSearchParams(window.location.search).get('keyword') || '',
+            source: new URLSearchParams(window.location.search).get('source') || '',
+            country: new URLSearchParams(window.location.search).get('country') || '',
+            tech_stack: new URLSearchParams(window.location.search).get('tech_stack') || '',
+            posted_within: new URLSearchParams(window.location.search).get('posted_within') || '',
+            sort_by: new URLSearchParams(window.location.search).get('sort_by') || 'scraped_at',
+            limit: new URLSearchParams(window.location.search).get('limit') || '50'
+        },
+
+        async init() {
+            await this.loadFilterOptions();
+            await this.loadJobs();
+        },
+
+        async loadFilterOptions() {
+            try {
+                const response = await fetch('{% url "jobs:filter_options" %}');
+                const data = await response.json();
+                if (data.success) {
+                    this.countries = data.countries || [];
+                    this.techStacks = data.tech_stacks || [];
+                }
+            } catch (error) {
+                console.error('Error loading filter options:', error);
+            }
+        },
+
+        async loadJobs() {
+            this.loading = true;
+            try {
+                const params = new URLSearchParams();
+                Object.keys(this.filters).forEach(key => {
+                    if (this.filters[key]) params.append(key, this.filters[key]);
+                });
+
+                const response = await fetch('{% url "jobs:api_list" %}?' + params.toString());
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.allJobs = data.jobs || [];
+                    this.extractKeywords();
+                    this.applyKeywordFilter();
+                } else {
+                    console.error('Error loading jobs:', data.error);
+                }
+            } catch (error) {
+                console.error('Error loading jobs:', error);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        extractKeywords() {
+            // Extract unique search keywords with counts
+            const keywordMap = {};
+            this.allJobs.forEach(job => {
+                if (job.search_keyword) {
+                    const kw = job.search_keyword.trim();
+                    if (kw) {
+                        keywordMap[kw] = (keywordMap[kw] || 0) + 1;
+                    }
+                }
+            });
+
+            // Convert to array and sort by count descending
+            this.availableKeywords = Object.entries(keywordMap)
+                .map(([keyword, count]) => ({ keyword, count }))
+                .sort((a, b) => b.count - a.count);
+        },
+
+        applyKeywordFilter() {
+            // Apply client-side filtering based on selected keywords
+            if (this.selectedKeywords.length === 0) {
+                this.jobs = this.allJobs;
+            } else {
+                this.jobs = this.allJobs.filter(job => 
+                    job.search_keyword && this.selectedKeywords.includes(job.search_keyword.trim())
+                );
+            }
+        },
+
+        toggleKeyword(keyword) {
+            const index = this.selectedKeywords.indexOf(keyword);
+            if (index > -1) {
+                this.selectedKeywords.splice(index, 1);
+            } else {
+                this.selectedKeywords.push(keyword);
+            }
+            this.applyKeywordFilter();
+        },
+
+        clearSelectedKeywords() {
+            this.selectedKeywords = [];
+            this.applyKeywordFilter();
+        },
+
+        applyFilters() {
+            const params = new URLSearchParams();
+            Object.keys(this.filters).forEach(key => {
+                if (this.filters[key]) params.append(key, this.filters[key]);
+            });
+            window.history.pushState({}, '', '?' + params.toString());
+            this.loadJobs();
+        },
+
+        resetFilters() {
+            this.filters = {
+                keyword: '',
+                source: '',
+                country: '',
+                tech_stack: '',
+                posted_within: '',
+                sort_by: 'scraped_at',
+                limit: '50'
+            };
+            this.selectedKeywords = [];
+            window.history.pushState({}, '', window.location.pathname);
+            this.loadJobs();
+        },
+
+        selectJob(index) {
+            this.selectedJobIndex = index;
+            this.selectedJob = this.jobs[index];
+            // Close other panels when selecting new job
+            this.selectedCompany = null;
+            this.showAIChat = false;
+        },
+
+        async viewCompany(companyName) {
+            this.loadingCompany = true;
+            this.selectedCompany = { 
+                name: companyName,
+                status: 'Undecided',
+                company_type: '',
+                solution_domain: ''
+            };
+            
+            try {
+                // Get all jobs for this company from ALL jobs (not just filtered)
+                const companyJobs = this.allJobs.filter(job => job.company === companyName);
+                
+                // Extract unique tech stack
+                const techStackSet = new Set();
+                const countriesSet = new Set();
+                companyJobs.forEach(job => {
+                    if (job.skills) {
+                        job.skills.forEach(skill => techStackSet.add(skill));
+                    }
+                    if (job.country) {
+                        countriesSet.add(job.country);
+                    }
+                });
+
+                // Simulate API delay
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                this.selectedCompany = {
+                    name: companyName,
+                    job_count: companyJobs.length,
+                    jobs: companyJobs,
+                    tech_stack: Array.from(techStackSet),
+                    countries: Array.from(countriesSet),
+                    status: 'Undecided',
+                    company_type: '',
+                    solution_domain: '',
+                    website: null,
+                    industry: null,
+                    location: companyJobs.length > 0 ? companyJobs[0].location : null,
+                    description: null
+                };
+            } catch (error) {
+                console.error('Error loading company:', error);
+            } finally {
+                this.loadingCompany = false;
+            }
+        },
+
+        selectJobFromCompany(job) {
+            // Find job index in main jobs array
+            const index = this.jobs.findIndex(j => j.job_id === job.job_id);
+            if (index !== -1) {
+                this.selectJob(index);
+                // Scroll to top of job details panel
+                this.$nextTick(() => {
+                    const jobPanel = this.$el.querySelector('.bg-white.shadow.rounded-lg.overflow-y-auto');
+                    if (jobPanel) {
+                        jobPanel.scrollTop = 0;
+                    }
+                });
+            }
+        },
+
+        updateCompanyStatus() {
+            console.log('Update company status:', this.selectedCompany.name, this.selectedCompany.status);
+            // In production, send API request to update company status
+            // Example: POST /api/companies/{company_name}/status
+        },
+
+        updateCompanyType() {
+            console.log('Update company type:', this.selectedCompany.name, this.selectedCompany.company_type);
+            // In production, send API request to update company type
+        },
+
+        updateSolutionDomain() {
+            console.log('Update solution domain:', this.selectedCompany.name, this.selectedCompany.solution_domain);
+            // In production, send API request to update solution domain
+        },
+
+        getContactDetails() {
+            console.log('Get contact details for:', this.selectedCompany.name);
+            // Open AI chat for contact extraction
+            this.openAIChat();
+            // In production, this would trigger AI to search for contact information
+        },
+
+        openAIChat() {
+            this.showAIChat = true;
+            if (this.chatMessages.length === 0) {
+                // Add initial AI greeting
+                const context = this.selectedCompany 
+                    ? `about ${this.selectedCompany.name}` 
+                    : (this.selectedJob ? `about the ${this.selectedJob.title} position` : '');
+                
+                this.chatMessages.push({
+                    role: 'assistant',
+                    content: `Hi! I'm Columbus AI. I can help you ${context}. What would you like to know?`
+                });
+            }
+        },
+
+        async sendChatMessage() {
+            if (!this.chatInput.trim() || this.chatLoading) return;
+
+            const userMessage = this.chatInput.trim();
+            this.chatInput = '';
+            
+            // Add user message
+            this.chatMessages.push({
+                role: 'user',
+                content: userMessage
+            });
+
+            this.chatLoading = true;
+
+            try {
+                // Mock AI response - in production, call your AI API
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                const context = this.selectedCompany 
+                    ? `This is a mock response about ${this.selectedCompany.name}. ` 
+                    : (this.selectedJob ? `This is a mock response about the ${this.selectedJob.title} position. ` : '');
+                
+                this.chatMessages.push({
+                    role: 'assistant',
+                    content: context + 'In production, this would be a real AI response from Columbus AI using the Gemini API.'
+                });
+
+                // Scroll to bottom of chat
+                this.$nextTick(() => {
+                    const chatContainer = this.$el.querySelector('.overflow-y-auto');
+                    if (chatContainer) {
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    }
+                });
+            } catch (error) {
+                console.error('Error sending chat message:', error);
+                this.chatMessages.push({
+                    role: 'assistant',
+                    content: 'Sorry, I encountered an error. Please try again.'
+                });
+            } finally {
+                this.chatLoading = false;
+            }
+        },
+
+        getSourceBadgeClass(source) {
+            const s = (source || '').toLowerCase();
+            if (s === 'linkedin') return 'source-badge-linkedin';
+            if (s === 'adzuna') return 'source-badge-adzuna';
+            if (s === 'arbeitnow') return 'source-badge-arbeitnow';
+            if (s === 'serpapi') return 'source-badge-serpapi';
+            return 'source-badge-default';
+        },
+
+        getActiveFilterCount() {
+            return Object.values(this.filters).filter(v => v && v !== 'scraped_at' && v !== '50').length;
+        },
+
+        getPostedWithinLabel() {
+            const val = this.filters.posted_within;
+            if (val === '1') return '24 hours';
+            if (val === '3') return '3 days';
+            if (val === '7') return '7 days';
+            if (val === '14') return '2 weeks';
+            if (val === '30') return '30 days';
+            if (val === '90') return '3 months';
+            return val + ' days';
+        },
+
+        formatDate(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        },
+
+        getTimeAgo(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+            const diffWeeks = Math.floor(diffMs / 604800000);
+
+            if (diffMins < 1) return 'just now';
+            if (diffMins < 60) return diffMins + (diffMins === 1 ? ' minute ago' : ' minutes ago');
+            if (diffHours < 24) return diffHours + (diffHours === 1 ? ' hour ago' : ' hours ago');
+            if (diffDays < 7) return diffDays + (diffDays === 1 ? ' day ago' : ' days ago');
+            if (diffWeeks < 4) return diffWeeks + (diffWeeks === 1 ? ' week ago' : ' weeks ago');
+            return date.toLocaleDateString();
+        }
+    }
+}
+</script>
+{% endblock %}

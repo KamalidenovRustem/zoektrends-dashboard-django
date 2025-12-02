@@ -1,0 +1,53 @@
+# Django Core
+Django==5.0.2
+djangorestframework==3.14.0
+django-environ==0.11.2
+django-cors-headers==4.3.1
+
+# Database
+psycopg2-binary==2.9.9  # PostgreSQL (or use mysqlclient for MySQL)
+# mysqlclient==2.2.1    # Uncomment if using MySQL
+
+# Google Cloud Services
+google-cloud-bigquery==3.17.2
+google-cloud-aiplatform==1.42.1
+google-cloud-run==0.10.3
+google-auth==2.27.0
+
+# AI Services
+openai>=2.8.1  # OpenAI API for GPT-4o and other models (gpt-5.1 not yet available)
+
+# Caching & Background Jobs
+redis==5.0.1
+django-redis==5.4.0
+celery==5.3.6
+celery[redis]==5.3.6
+
+# HTTP & API
+requests==2.31.0
+urllib3==2.1.0
+beautifulsoup4==4.12.3  # HTML parsing for web search
+
+# Data Processing
+pandas==2.2.0
+pydantic==2.6.1
+python-dateutil==2.8.2
+
+# YAML support (for configuration)
+PyYAML==6.0.1
+
+# Utilities
+python-dotenv==1.0.1
+whitenoise==6.6.0  # Static files serving
+
+# Development
+django-debug-toolbar==4.3.0
+ipython==8.21.0
+
+# Production Server
+gunicorn==21.2.0
+gevent==24.2.1
+
+# Testing
+pytest==8.0.0
+pytest-django==4.8.0

@@ -1,0 +1,657 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Columbus Chat - AI Prospect Intelligence | Zoektrends Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes typing {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        .message-enter {
+            animation: fadeIn 0.3s ease-out;
+        }
+        .typing-indicator span {
+            animation: typing 1.4s infinite;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .chat-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e0 #f7fafc;
+        }
+        .chat-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chat-scroll::-webkit-scrollbar-track {
+            background: #f7fafc;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background-color: #cbd5e0;
+            border-radius: 4px;
+        }
+        .prospect-card {
+            transition: all 0.3s ease;
+        }
+        .prospect-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div x-data="columbusChat()" x-init="init()" class="h-screen flex flex-col">
+        <!-- Header -->
+        <header class="gradient-bg text-white shadow-lg">
+            <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <a href="/dashboard/" class="text-white hover:text-gray-200 transition">
+                            <i class="fas fa-arrow-left"></i>
+                        </a>
+                        <div>
+                            <h1 class="text-2xl font-bold flex items-center">
+                                <i class="fas fa-compass mr-3"></i>
+                                Columbus Chat
+                            </h1>
+                            <p class="text-sm text-purple-100 mt-1">
+                                AI-Powered Prospect Intelligence Assistant
+                                <span class="ml-2 px-2 py-0.5 bg-white/20 rounded text-xs">
+                                    Powered by {{ ai_model }}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button @click="resetChat()" class="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition text-sm">
+                            <i class="fas fa-redo mr-2"></i>Reset Chat
+                        </button>
+                        <a href="/dashboard/companies/" class="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition text-sm">
+                            <i class="fas fa-building mr-2"></i>Companies
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex overflow-hidden">
+            <!-- Chat Area -->
+            <div class="flex-1 flex flex-col">
+                <!-- Quick Suggestions (shown when no messages) -->
+                <div x-show="messages.length === 0" class="p-6 bg-white border-b">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>Quick Suggestions
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <template x-for="suggestion in suggestions" :key="suggestion">
+                            <button 
+                                @click="sendMessage(suggestion)"
+                                class="text-left p-4 bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 rounded-lg border border-purple-200 transition group">
+                                <i class="fas fa-comment-dots text-purple-600 mr-2 group-hover:scale-110 transition-transform"></i>
+                                <span class="text-sm text-gray-700" x-text="suggestion"></span>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Messages Container -->
+                <div class="flex-1 overflow-y-auto chat-scroll p-6 space-y-4" x-ref="messagesContainer">
+                    <!-- Welcome Message -->
+                    <div x-show="messages.length === 0" class="text-center py-12">
+                        <div class="inline-block p-6 bg-gradient-to-r from-purple-100 to-blue-100 rounded-full mb-4">
+                            <i class="fas fa-compass text-5xl text-purple-600"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-2">Welcome to Columbus Chat!</h3>
+                        <p class="text-gray-600 max-w-2xl mx-auto">
+                            I'm your AI assistant for discovering the best prospects and partners. 
+                            Ask me about companies, technologies, or let me find the perfect matches for your needs.
+                        </p>
+                    </div>
+
+                    <!-- Chat Messages -->
+                    <template x-for="(message, index) in messages" :key="index">
+                        <div class="message-enter" :class="message.role === 'user' ? 'flex justify-end' : 'flex justify-start'">
+                            <div :class="message.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200'" 
+                                 class="max-w-3xl rounded-lg shadow-sm p-4">
+                                <!-- Message Header -->
+                                <div class="flex items-center mb-2">
+                                    <div :class="message.role === 'user' ? 'bg-blue-700' : 'bg-purple-600'" 
+                                         class="w-8 h-8 rounded-full flex items-center justify-center mr-3">
+                                        <i :class="message.role === 'user' ? 'fa-user' : 'fa-compass'" 
+                                           class="fas text-white text-sm"></i>
+                                    </div>
+                                    <span class="font-semibold" :class="message.role === 'user' ? 'text-white' : 'text-gray-800'" 
+                                          x-text="message.role === 'user' ? 'You' : 'Columbus AI'"></span>
+                                    <span class="text-xs ml-auto" :class="message.role === 'user' ? 'text-blue-200' : 'text-gray-500'" 
+                                          x-text="formatTime(message.timestamp)"></span>
+                                </div>
+                                
+                                <!-- Message Content -->
+                                <div :class="message.role === 'user' ? 'text-white' : 'text-gray-700'" 
+                                     class="prose prose-sm max-w-none">
+                                    <div x-html="formatMessage(message.content, message.role)"></div>
+                                </div>
+
+                                <!-- Company Results -->
+                                <div x-show="message.companies && message.companies.length > 0" class="mt-4 space-y-3">
+                                    <template x-for="company in message.companies" :key="company.company_name">
+                                        <div class="prospect-card bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-lg p-4">
+                                            <!-- Company Header -->
+                                            <div class="flex items-start justify-between mb-3">
+                                                <div class="flex-1">
+                                                    <h4 class="font-bold text-gray-900 text-lg mb-1" x-text="company.company_name"></h4>
+                                                    <p class="text-sm text-gray-600 flex items-center">
+                                                        <i class="fas fa-industry mr-2"></i>
+                                                        <span x-text="company.company_type || 'Unknown Type'"></span>
+                                                        <span x-show="company.company_industry" class="mx-2">•</span>
+                                                        <span x-text="company.company_industry"></span>
+                                                    </p>
+                                                </div>
+                                                <!-- Prospect Score Badge -->
+                                                <div x-show="company.prospect_score !== undefined" class="flex flex-col items-end">
+                                                    <div class="flex items-center space-x-2 mb-1">
+                                                        <span class="text-2xl" x-text="getScoreEmoji(company.prospect_score)"></span>
+                                                        <span class="text-2xl font-bold" 
+                                                              :class="getScoreColor(company.prospect_score)"
+                                                              x-text="company.prospect_score"></span>
+                                                    </div>
+                                                    <span class="text-xs font-medium px-2 py-1 rounded" 
+                                                          :class="getScoreBadgeClass(company.prospect_score)"
+                                                          x-text="getScoreCategory(company.prospect_score)"></span>
+                                                </div>
+                                            </div>
+
+                                            <!-- Company Details -->
+                                            <div class="grid grid-cols-2 gap-3 mb-3">
+                                                <div class="flex items-center text-sm text-gray-600">
+                                                    <i class="fas fa-briefcase mr-2 text-blue-500"></i>
+                                                    <span x-text="company.job_count + ' jobs'"></span>
+                                                </div>
+                                                <div x-show="company.company_size" class="flex items-center text-sm text-gray-600">
+                                                    <i class="fas fa-users mr-2 text-green-500"></i>
+                                                    <span x-text="formatCompanySize(company.company_size)"></span>
+                                                </div>
+                                                <div x-show="company.company_location" class="flex items-center text-sm text-gray-600">
+                                                    <i class="fas fa-map-marker-alt mr-2 text-red-500"></i>
+                                                    <span x-text="company.company_location"></span>
+                                                </div>
+                                                <div x-show="company.created_at" class="flex items-center text-sm text-gray-600">
+                                                    <i class="fas fa-calendar mr-2 text-purple-500"></i>
+                                                    <span x-text="'Added ' + formatDate(company.created_at)"></span>
+                                                </div>
+                                            </div>
+
+                                            <!-- Tech Stack -->
+                                            <div x-show="company.tech_stack && company.tech_stack.length > 0" class="mb-3">
+                                                <p class="text-xs font-semibold text-gray-700 mb-2">Tech Stack:</p>
+                                                <div class="flex flex-wrap gap-2">
+                                                    <template x-for="tech in company.tech_stack.slice(0, 8)" :key="tech">
+                                                        <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                                                            <i class="fas fa-code mr-1"></i><span x-text="tech"></span>
+                                                        </span>
+                                                    </template>
+                                                    <span x-show="company.tech_stack.length > 8" 
+                                                          class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs"
+                                                          x-text="'+' + (company.tech_stack.length - 8) + ' more'"></span>
+                                                </div>
+                                            </div>
+
+                                            <!-- Score Breakdown -->
+                                            <div x-show="company.score_breakdown" class="border-t border-gray-200 pt-3">
+                                                <details class="text-sm">
+                                                    <summary class="cursor-pointer text-gray-700 font-medium hover:text-purple-600">
+                                                        <i class="fas fa-chart-bar mr-2"></i>Score Breakdown
+                                                    </summary>
+                                                    <div class="mt-2 space-y-1 pl-6">
+                                                        <div class="flex justify-between">
+                                                            <span class="text-gray-600">Tech Alignment:</span>
+                                                            <span class="font-medium" x-text="company.score_breakdown.tech_score + '/30'"></span>
+                                                        </div>
+                                                        <div class="flex justify-between">
+                                                            <span class="text-gray-600">Company Type:</span>
+                                                            <span class="font-medium" x-text="company.score_breakdown.company_type_score + '/20'"></span>
+                                                        </div>
+                                                        <div class="flex justify-between">
+                                                            <span class="text-gray-600">Industry Fit:</span>
+                                                            <span class="font-medium" x-text="company.score_breakdown.industry_score + '/15'"></span>
+                                                        </div>
+                                                        <div class="flex justify-between">
+                                                            <span class="text-gray-600">Company Size:</span>
+                                                            <span class="font-medium" x-text="company.score_breakdown.size_score + '/15'"></span>
+                                                        </div>
+                                                        <div class="flex justify-between">
+                                                            <span class="text-gray-600">Activity Level:</span>
+                                                            <span class="font-medium" x-text="company.score_breakdown.activity_score + '/15'"></span>
+                                                        </div>
+                                                        <div class="flex justify-between">
+                                                            <span class="text-gray-600">Recency:</span>
+                                                            <span class="font-medium" x-text="company.score_breakdown.recency_score + '/5'"></span>
+                                                        </div>
+                                                    </div>
+                                                </details>
+                                            </div>
+
+                                            <!-- Actions -->
+                                            <div class="flex gap-2 mt-3 pt-3 border-t border-gray-200">
+                                                <a :href="'/dashboard/companies/?keyword=' + encodeURIComponent(company.company_name)" 
+                                                   class="flex-1 text-center px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition">
+                                                    <i class="fas fa-building mr-2"></i>View Details
+                                                </a>
+                                                <a :href="'/dashboard/jobs/?keyword=' + encodeURIComponent(company.company_name)" 
+                                                   class="flex-1 text-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition">
+                                                    <i class="fas fa-briefcase mr-2"></i>View Jobs
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Typing Indicator -->
+                    <div x-show="isTyping" class="flex justify-start message-enter">
+                        <div class="bg-white border border-gray-200 rounded-lg shadow-sm p-4 max-w-xs">
+                            <div class="flex items-center">
+                                <div class="bg-purple-600 w-8 h-8 rounded-full flex items-center justify-center mr-3">
+                                    <i class="fas fa-compass text-white text-sm"></i>
+                                </div>
+                                <div class="typing-indicator flex space-x-1">
+                                    <span class="w-2 h-2 bg-purple-600 rounded-full"></span>
+                                    <span class="w-2 h-2 bg-purple-600 rounded-full"></span>
+                                    <span class="w-2 h-2 bg-purple-600 rounded-full"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="border-t bg-white p-4">
+                    <form @submit.prevent="sendMessage(userInput)" class="max-w-5xl mx-auto">
+                        <div class="flex space-x-3">
+                            <input 
+                                type="text" 
+                                x-model="userInput"
+                                :disabled="isTyping"
+                                placeholder="Ask me anything about prospects, companies, or technologies..."
+                                class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            />
+                            <button 
+                                type="submit"
+                                :disabled="!userInput.trim() || isTyping"
+                                class="px-6 py-3 gradient-bg text-white rounded-lg font-medium hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i class="fas fa-paper-plane mr-2"></i>Send
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Sidebar - Chat History -->
+            <div class="w-80 bg-white border-l overflow-y-auto chat-scroll">
+                <div class="p-6">
+                    <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-history text-purple-600 mr-2"></i>Chat History
+                    </h2>
+
+                    <!-- Empty State -->
+                    <div x-show="chatHistory.length === 0" class="text-center py-8">
+                        <i class="fas fa-comments text-4xl text-gray-300 mb-3"></i>
+                        <p class="text-sm text-gray-500">No chat history yet</p>
+                        <p class="text-xs text-gray-400 mt-1">Start a conversation to see it here</p>
+                    </div>
+
+                    <!-- Chat History List -->
+                    <div x-show="chatHistory.length > 0" class="space-y-3">
+                        <template x-for="(chat, index) in chatHistory" :key="index">
+                            <div class="p-3 bg-gradient-to-r from-gray-50 to-blue-50 border border-gray-200 rounded-lg hover:shadow-md transition cursor-pointer hover:border-purple-300"
+                                 @click="loadChatFromHistory(chat)">
+                                <!-- Chat Preview -->
+                                <div class="flex items-start space-x-2">
+                                    <i class="fas fa-comment-dots text-purple-600 text-sm mt-1"></i>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-gray-900 truncate" x-text="chat.userMessage"></p>
+                                        <p class="text-xs text-gray-600 truncate mt-1" x-text="chat.aiResponse.substring(0, 60) + '...'"></p>
+                                        <div class="flex items-center justify-between mt-2">
+                                            <span class="text-xs text-gray-500" x-text="formatChatTime(chat.timestamp)"></span>
+                                            <button @click.stop="deleteChatHistory(index)" class="text-xs text-red-500 hover:text-red-700">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Clear All Button -->
+                    <div x-show="chatHistory.length > 0" class="mt-4 pt-4 border-t">
+                        <button @click="clearAllHistory()" 
+                                class="w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg border border-red-200 transition">
+                            <i class="fas fa-trash-alt mr-2"></i>Clear All History
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function columbusChat() {
+            return {
+                messages: [],
+                userInput: '',
+                isTyping: false,
+                suggestions: [],
+                chatHistory: [],
+                loadingInsights: true,
+
+                init() {
+                    this.loadSuggestions();
+                    this.loadChatHistory();
+                },
+
+                async loadSuggestions() {
+                    try {
+                        const response = await fetch('/dashboard/columbus/suggestions/');
+                        const data = await response.json();
+                        if (data.success) {
+                            this.suggestions = data.suggestions;
+                        }
+                    } catch (error) {
+                        console.error('Error loading suggestions:', error);
+                    }
+                },
+
+                loadChatHistory() {
+                    const stored = localStorage.getItem('columbusChats');
+                    if (stored) {
+                        try {
+                            this.chatHistory = JSON.parse(stored);
+                            // Keep only last 10 chats
+                            if (this.chatHistory.length > 10) {
+                                this.chatHistory = this.chatHistory.slice(-10);
+                                this.saveChatHistory();
+                            }
+                        } catch (error) {
+                            console.error('Error loading chat history:', error);
+                            this.chatHistory = [];
+                        }
+                    }
+                },
+
+                saveChatHistory() {
+                    try {
+                        // Keep only last 10 chats
+                        const chatsToSave = this.chatHistory.slice(-10);
+                        localStorage.setItem('columbusChats', JSON.stringify(chatsToSave));
+                    } catch (error) {
+                        console.error('Error saving chat history:', error);
+                    }
+                },
+
+                addToChatHistory(userMessage, aiResponse) {
+                    this.chatHistory.push({
+                        userMessage: userMessage,
+                        aiResponse: aiResponse,
+                        timestamp: new Date().toISOString()
+                    });
+                    this.saveChatHistory();
+                },
+
+                loadChatFromHistory(chat) {
+                    // Clear current messages
+                    this.messages = [];
+                    // Add the saved conversation
+                    this.messages.push({
+                        role: 'user',
+                        content: chat.userMessage,
+                        timestamp: new Date(chat.timestamp)
+                    });
+                    this.messages.push({
+                        role: 'assistant',
+                        content: chat.aiResponse,
+                        timestamp: new Date(chat.timestamp)
+                    });
+                    this.scrollToBottom();
+                },
+
+                deleteChatHistory(index) {
+                    this.chatHistory.splice(index, 1);
+                    this.saveChatHistory();
+                },
+
+                clearAllHistory() {
+                    if (confirm('Are you sure you want to clear all chat history?')) {
+                        this.chatHistory = [];
+                        localStorage.removeItem('columbusChats');
+                    }
+                },
+
+                formatChatTime(timestamp) {
+                    const date = new Date(timestamp);
+                    const now = new Date();
+                    const diffMs = now - date;
+                    const diffMins = Math.floor(diffMs / 60000);
+                    const diffHours = Math.floor(diffMs / 3600000);
+                    const diffDays = Math.floor(diffMs / 86400000);
+
+                    if (diffMins < 1) return 'Just now';
+                    if (diffMins < 60) return `${diffMins}m ago`;
+                    if (diffHours < 24) return `${diffHours}h ago`;
+                    if (diffDays < 7) return `${diffDays}d ago`;
+                    return date.toLocaleDateString();
+                },
+
+                async sendMessage(message) {
+                    if (typeof message === 'string') {
+                        this.userInput = message;
+                    }
+                    
+                    const messageText = this.userInput.trim();
+                    if (!messageText) return;
+
+                    // Add user message
+                    this.messages.push({
+                        role: 'user',
+                        content: messageText,
+                        timestamp: new Date()
+                    });
+
+                    this.userInput = '';
+                    this.isTyping = true;
+                    this.scrollToBottom();
+
+                    try {
+                        const response = await fetch('/dashboard/columbus/chat/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ message: messageText })
+                        });
+
+                        const data = await response.json();
+                        
+                        console.log('API Response:', data);
+                        console.log('Companies data:', data.data);
+                        console.log('Number of companies:', data.data ? data.data.length : 0);
+                        
+                        if (data.success) {
+                            // Add AI response
+                            this.messages.push({
+                                role: 'assistant',
+                                content: data.response,
+                                companies: data.data,
+                                timestamp: new Date()
+                            });
+                            console.log('Message added with companies:', data.data);
+                            
+                            // Save to chat history
+                            this.addToChatHistory(messageText, data.response);
+                        } else {
+                            this.messages.push({
+                                role: 'assistant',
+                                content: 'Sorry, I encountered an error: ' + (data.error || 'Unknown error'),
+                                timestamp: new Date()
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Error sending message:', error);
+                        this.messages.push({
+                            role: 'assistant',
+                            content: 'Sorry, I encountered a connection error. Please try again.',
+                            timestamp: new Date()
+                        });
+                    } finally {
+                        this.isTyping = false;
+                        this.scrollToBottom();
+                    }
+                },
+
+                async resetChat() {
+                    if (!confirm('Are you sure you want to reset the conversation? This will clear all messages.')) {
+                        return;
+                    }
+
+                    try {
+                        await fetch('/dashboard/columbus/reset/', { method: 'POST' });
+                        this.messages = [];
+                        this.userInput = '';
+                    } catch (error) {
+                        console.error('Error resetting chat:', error);
+                    }
+                },
+
+                scrollToBottom() {
+                    this.$nextTick(() => {
+                        const container = this.$refs.messagesContainer;
+                        container.scrollTop = container.scrollHeight;
+                    });
+                },
+
+                formatTime(timestamp) {
+                    return new Date(timestamp).toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    });
+                },
+
+                formatDate(dateString) {
+                    const date = new Date(dateString);
+                    const now = new Date();
+                    const diffTime = Math.abs(now - date);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDays < 1) return 'today';
+                    if (diffDays === 1) return 'yesterday';
+                    if (diffDays < 7) return diffDays + ' days ago';
+                    if (diffDays < 30) return Math.floor(diffDays / 7) + ' weeks ago';
+                    return date.toLocaleDateString();
+                },
+
+                formatCompanySize(size) {
+                    if (!size) return 'Unknown';
+                    if (typeof size === 'string') return size;
+                    if (size >= 10000) return '10,000+ employees';
+                    if (size >= 1000) return '1,000-10,000 employees';
+                    if (size >= 500) return '500-1,000 employees';
+                    if (size >= 100) return '100-500 employees';
+                    if (size >= 50) return '50-100 employees';
+                    return size + ' employees';
+                },
+
+                getScoreEmoji(score) {
+                    if (score >= 70) return '🔥';
+                    if (score >= 50) return '⭐';
+                    if (score >= 30) return '❄️';
+                    return '🚫';
+                },
+
+                getScoreColor(score) {
+                    if (score >= 70) return 'text-red-600';
+                    if (score >= 50) return 'text-yellow-600';
+                    if (score >= 30) return 'text-blue-600';
+                    return 'text-gray-600';
+                },
+
+                getScoreBadgeClass(score) {
+                    if (score >= 70) return 'bg-red-100 text-red-700';
+                    if (score >= 50) return 'bg-yellow-100 text-yellow-700';
+                    if (score >= 30) return 'bg-blue-100 text-blue-700';
+                    return 'bg-gray-100 text-gray-700';
+                },
+
+                getScoreCategory(score) {
+                    if (score >= 70) return 'Hot Prospect';
+                    if (score >= 50) return 'Warm Lead';
+                    if (score >= 30) return 'Cold Lead';
+                    return 'Avoid';
+                },
+
+                formatMessage(content, role) {
+                    if (role === 'user') {
+                        // User messages stay as plain text
+                        return `<p class="whitespace-pre-wrap">${this.escapeHtml(content)}</p>`;
+                    }
+                    
+                    // AI messages: Convert Markdown-style formatting to HTML
+                    let formatted = this.escapeHtml(content);
+                    
+                    // Convert [text](url) markdown links to HTML links
+                    formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-blue-600 hover:text-blue-800 underline">$1</a>');
+                    
+                    // Convert **bold** to <strong>
+                    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                    
+                    // Convert ### headings
+                    formatted = formatted.replace(/^###\s+(.+)$/gm, '<h3 class="text-lg font-bold mt-4 mb-2">$1</h3>');
+                    
+                    // Convert numbered lists (1. Item) to proper HTML lists
+                    formatted = formatted.replace(/^\d+\.\s+\*\*(.*?)\*\*$/gm, (match, p1) => {
+                        return `<div class="font-bold text-lg mt-4 mb-2">${p1}</div>`;
+                    });
+                    
+                    // Convert bullet points with bold labels (* **Label**: text)
+                    formatted = formatted.replace(/^\s*[*-]\s+\*\*(.*?)\*\*:\s*(.*?)$/gm, (match, label, text) => {
+                        return `<div class="ml-4 mb-2"><span class="font-semibold text-gray-900">${label}:</span> <span class="text-gray-700">${text}</span></div>`;
+                    });
+                    
+                    // Convert simple bullet points
+                    formatted = formatted.replace(/^\s*[*-]\s+(.+)$/gm, '<div class="ml-4 mb-1">• $1</div>');
+                    
+                    // Preserve line breaks
+                    formatted = formatted.replace(/\n\n/g, '</p><p class="mt-3">');
+                    formatted = formatted.replace(/\n/g, '<br>');
+                    
+                    return `<div class="leading-relaxed">${formatted}</div>`;
+                },
+
+                escapeHtml(text) {
+                    const div = document.createElement('div');
+                    div.textContent = text;
+                    return div.innerHTML;
+                }
+            };
+        }
+    </script>
+</body>
+</html>
