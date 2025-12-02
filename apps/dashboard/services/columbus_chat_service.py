@@ -767,6 +767,15 @@ or
     
     def _search_by_tech(self, technology: str, limit: int = 5, industry_filter: str = None, context: Dict = None) -> Dict:
         """Search companies by technology stack, optionally filtered by industry"""
+        # Validate technology parameter
+        if not technology or not isinstance(technology, str):
+            return {
+                'companies': [],
+                'count': 0,
+                'technology': technology,
+                'message': 'Please specify a technology to search for (e.g., "Vertex AI", "BigQuery", "Looker")'
+            }
+        
         tech_lower = technology.lower()
         
         # More flexible tech matching - handle variations
@@ -809,7 +818,7 @@ or
         logger.info(f"Tech search for '{technology}' (variations: {tech_variations}) found {len(matching)} companies in BigQuery")
         
         # Apply industry filter if specified
-        if industry_filter:
+        if industry_filter and isinstance(industry_filter, str):
             industry_lower = industry_filter.lower()
             original_count = len(matching)
             
