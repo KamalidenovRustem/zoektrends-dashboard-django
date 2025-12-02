@@ -80,6 +80,7 @@ def chat_message(request):
         }, status=500)
 
 
+@csrf_exempt
 @require_http_methods(["POST"])
 def reset_chat(request):
     """Reset chat conversation history"""

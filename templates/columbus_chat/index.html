@@ -222,27 +222,27 @@
                                                     <div class="mt-2 space-y-1 pl-6">
                                                         <div class="flex justify-between">
                                                             <span class="text-gray-600">Tech Alignment:</span>
-                                                            <span class="font-medium" x-text="company.score_breakdown.tech_score + '/30'"></span>
+                                                            <span class="font-medium" x-text="(company.score_breakdown?.tech_score ?? 0) + '/30'"></span>
                                                         </div>
                                                         <div class="flex justify-between">
                                                             <span class="text-gray-600">Company Type:</span>
-                                                            <span class="font-medium" x-text="company.score_breakdown.company_type_score + '/20'"></span>
+                                                            <span class="font-medium" x-text="(company.score_breakdown?.company_type_score ?? 0) + '/20'"></span>
                                                         </div>
                                                         <div class="flex justify-between">
                                                             <span class="text-gray-600">Industry Fit:</span>
-                                                            <span class="font-medium" x-text="company.score_breakdown.industry_score + '/15'"></span>
+                                                            <span class="font-medium" x-text="(company.score_breakdown?.industry_score ?? 0) + '/15'"></span>
                                                         </div>
                                                         <div class="flex justify-between">
                                                             <span class="text-gray-600">Company Size:</span>
-                                                            <span class="font-medium" x-text="company.score_breakdown.size_score + '/15'"></span>
+                                                            <span class="font-medium" x-text="(company.score_breakdown?.size_score ?? 0) + '/15'"></span>
                                                         </div>
                                                         <div class="flex justify-between">
                                                             <span class="text-gray-600">Activity Level:</span>
-                                                            <span class="font-medium" x-text="company.score_breakdown.activity_score + '/15'"></span>
+                                                            <span class="font-medium" x-text="(company.score_breakdown?.activity_score ?? 0) + '/15'"></span>
                                                         </div>
                                                         <div class="flex justify-between">
                                                             <span class="text-gray-600">Recency:</span>
-                                                            <span class="font-medium" x-text="company.score_breakdown.recency_score + '/5'"></span>
+                                                            <span class="font-medium" x-text="(company.score_breakdown?.recency_score ?? 0) + '/5'"></span>
                                                         </div>
                                                     </div>
                                                 </details>
