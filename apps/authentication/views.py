@@ -33,7 +33,7 @@ def login(request):
     
     if not username or not password:
         messages.error(request, 'Username and password are required')
-        return redirect('login')
+        return redirect('login_page')
     
     # Simple authentication - matching Laravel's env vars
     valid_username = settings.DASHBOARD_USERNAME
@@ -52,7 +52,7 @@ def login(request):
     else:
         logger.warning(f'Failed login attempt: {username}')
         messages.error(request, 'Invalid credentials.')
-        return redirect('login')
+        return redirect('login_page')
 
 
 @require_http_methods(["POST"])
@@ -64,4 +64,4 @@ def logout(request):
     logger.info(f'User logged out: {username}')
     messages.success(request, 'You have been logged out.')
     
-    return redirect('login')
+    return redirect('login_page')
