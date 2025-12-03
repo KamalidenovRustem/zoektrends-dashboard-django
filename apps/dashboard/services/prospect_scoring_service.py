@@ -31,32 +31,38 @@ class ProspectScoringService:
         self.secondary_tech = ['dataflow', 'dataproc', 'cloud storage', 'pubsub',
                               'cloud composer', 'cloud functions', 'cloud run']
         
-        # Ideal company types (weighted)
+        # Ideal company types (weighted) - Focus on companies that NEED our services
         self.company_type_weights = {
-            'Technology': 10,
-            'Finance': 8,
-            'Healthcare': 8,
-            'Manufacturing': 7,
-            'Retail': 7,
-            'Education': 6,
-            'Energy': 6,
-            'Logistics': 5,
-            'Government': 5,
-            'Consulting (Technology)': 3,  # Lower priority
-            'Consulting (Business)': -5,   # Avoid - competitors
+            'Retail': 10,              # Top priority - need data insights
+            'Manufacturing': 10,       # Top priority - need data insights
+            'Healthcare': 10,          # Top priority - need data insights
+            'Finance': 9,              # High priority - data intensive
+            'Logistics': 8,            # High priority - optimization needs
+            'Energy': 8,               # High priority - analytics needs
+            'Education': 7,            # Good fit - growing data needs
+            'Government': 6,           # Moderate fit
+            'Hospitality': 5,          # Some potential
+            'Technology': -10,         # AVOID - they build their own
+            'Consulting (Technology)': -10,  # AVOID - competitors
+            'Consulting (Business)': -10,    # AVOID - competitors
             'Other': 2
         }
         
-        # Ideal industries
+        # Ideal industries - Companies that NEED data services
         self.high_value_industries = [
-            'Technology', 'Financial Services', 'Healthcare', 
+            'Retail', 'E-commerce', 'Manufacturing', 'Healthcare', 
             'Biotechnology Research', 'Pharmaceutical Manufacturing',
-            'Retail', 'E-commerce', 'Manufacturing', 
-            'Software Development', 'IT Services and IT Consulting'
+            'Financial Services', 'Banking', 'Insurance',
+            'Transportation', 'Logistics', 'Supply Chain',
+            'Energy', 'Utilities', 'Oil and Gas',
+            'Hospitality', 'Food and Beverage', 'Consumer Goods'
         ]
         
-        # Industries to avoid
+        # Industries to avoid - Tech companies and competitors
         self.avoid_industries = [
+            'Software Development', 'IT Services and IT Consulting',
+            'Information Services and Technology', 'Information and Internet',
+            'Technology', 'Computer Software', 'Internet',
             'Business Consulting and Services', 'Professional Services',
             'Staffing and Recruiting', 'Management Consulting'
         ]
@@ -247,17 +253,23 @@ class ProspectScoringService:
             return 3   # Very small
     
     def _score_activity(self, job_count: int) -> int:
-        """Score based on job posting volume (0-15 points)"""
-        if job_count >= 20:
-            return 15  # Very active hiring
+        """Score based on job posting volume (0-15 points)
+        
+        IDEAL: 3-20 jobs indicates growth company that needs help
+        AVOID: 50+ jobs indicates tech giant that builds internally
+        """
+        if job_count >= 50:
+            return -10  # Tech giant, likely Google/Microsoft - avoid
+        elif job_count >= 20:
+            return 5   # Too large/enterprise, lower priority
         elif job_count >= 10:
-            return 12
+            return 15  # IDEAL - active hiring, manageable size
         elif job_count >= 5:
-            return 10
+            return 15  # IDEAL - growing, needs support
         elif job_count >= 3:
-            return 7
+            return 12  # Good - some growth
         elif job_count >= 1:
-            return 5
+            return 6
         else:
             return 0
     

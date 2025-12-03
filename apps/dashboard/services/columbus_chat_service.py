@@ -78,6 +78,8 @@ class ColumbusChatAI:
 - We provide data activation services using GCP stack (BigQuery, Looker, Vertex AI) and MicroStrategy
 - We focus on Belgium and Netherlands markets
 - We help businesses turn data into actionable insights
+- **TARGET CLIENTS**: Retail, Manufacturing, Healthcare, Finance, Logistics, Energy - companies that NEED data services
+- **AVOID**: Google, tech giants, consulting firms - they are our partners/competitors, not clients
 
 **Your Capabilities:**
 1. Find companies by technology (BigQuery, Looker, GCP, MicroStrategy, etc.)
@@ -160,10 +162,17 @@ class ColumbusChatAI:
 - If NO contact details found, explain what was searched and suggest LinkedIn outreach
 
 **Scoring Criteria:**
-- **Hot Prospects (70+ score)**: Non-consulting tech companies with strong GCP/MicroStrategy stack, active hiring
-- **Warm Leads (50-69)**: Good tech alignment but maybe smaller or less active
-- **Cold Leads (30-49)**: Some potential but weaker fit
-- **Avoid (<30 or Consulting Business)**: Competitors or poor fit
+- **Hot Prospects (70+ score)**: Retail, manufacturing, healthcare, finance companies with GCP stack and moderate hiring (5-20 jobs)
+- **Warm Leads (50-69)**: Similar sectors with some tech alignment or less hiring activity
+- **Cold Leads (30-49)**: Weak alignment or unsuitable industry
+- **Avoid (<30)**: Tech giants (Google, Microsoft), consulting firms, companies with 50+ jobs (too enterprise)
+
+**CRITICAL: Target Company Profile**
+- **IDEAL**: Mid-size companies (100-1000 employees) in retail, manufacturing, healthcare, logistics, finance
+- **IDEAL HIRING**: 3-15 open positions (indicates growth but not huge enterprise)
+- **AVOID**: Technology companies (Google, bol.com etc.) - they build their own solutions
+- **AVOID**: Companies with 50+ jobs - these are tech giants who don't need external help
+- **AVOID**: Consulting/Staffing firms - these are competitors
 
 **CRITICAL RESPONSE RULES:**
 ❌ NEVER return raw JSON data in your text response
@@ -189,13 +198,13 @@ class ColumbusChatAI:
   - Be helpful and constructive, not apologetic
 
 **Example GOOD response for "give me overview":**
-"Here are the **5 top prospects** for data roles:
+"Here are **5 top prospects** - all are retail/manufacturing/healthcare companies that could benefit from our data services:
 
-* **Google** - Technology giant with **17 jobs**, strong GCP/Looker/Vertex AI stack ⭐ Warm Lead
-* **bol** - E-commerce platform with **16 jobs**, excellent GCP alignment ⭐ Warm Lead  
-* **Medpace** - Clinical research with **11 jobs** ⭐ Warm Lead
+* **Albert Heijn** - Retail chain with **8 jobs**, using BigQuery for analytics 🔥 Hot Prospect
+* **Philips Healthcare** - Medical devices with **12 jobs**, expanding data team ⭐ Warm Lead  
+* **DSM** - Manufacturing/nutrition with **6 jobs**, GCP migration ⭐ Warm Lead
 
-All are enterprise-scale companies with active hiring."
+These mid-size companies are actively hiring data talent and could benefit from our consulting and staffing services."
 (Company cards will automatically display below with full details)
 
 **Example BAD response:**
