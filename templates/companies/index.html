@@ -652,7 +652,6 @@
                             <!-- Jobs List -->
                             <template x-for="(job, index) in companyJobs" :key="index">
                                 <div 
-                                    @click="viewJob(job)"
                                     class="p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:shadow-md transition-all cursor-pointer bg-white"
                                 >
                                     <h5 class="font-semibold text-gray-900 mb-2 text-sm" x-text="job.title"></h5>
@@ -678,7 +677,7 @@
                                         <span class="text-xs text-gray-500" x-text="formatDate(job.scraped_at)"></span>
                                         <div class="flex items-center gap-2">
                                             <a 
-                                                :href="`/jobs/?company=${encodeURIComponent(selectedCompany.company_name)}`"
+                                                :href="`/dashboard/jobs/?company=${encodeURIComponent(selectedCompany.company_name)}`"
                                                 class="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1"
                                             >
                                                 View Details

@@ -353,10 +353,10 @@
                             <!-- Tech Stack -->
                             <template x-if="selectedJob.skills && selectedJob.skills.length > 0">
                                 <div>
-                                    <h4 class="text-sm font-semibold text-gray-900 mb-2">Tech Stack & Skills</h4>
+                                    <h4 class="text-base font-semibold text-gray-900 mb-3">Tech Stack & Skills</h4>
                                     <div class="flex flex-wrap gap-2">
                                         <template x-for="skill in selectedJob.skills" :key="skill">
-                                            <span class="px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-blue-50 to-pink-50 text-gray-800 border border-blue-200" x-text="skill"></span>
+                                            <span class="px-4 py-2 rounded-full text-base font-medium bg-gradient-to-r from-blue-50 to-pink-50 text-gray-800 border border-blue-200" x-text="skill"></span>
                                         </template>
                                     </div>
                                 </div>
@@ -365,16 +365,16 @@
                             <!-- Description -->
                             <template x-if="selectedJob.description">
                                 <div>
-                                    <h4 class="text-sm font-semibold text-gray-900 mb-2">Job Description</h4>
-                                    <div class="text-sm text-gray-700 prose prose-sm max-w-none" x-html="selectedJob.description.replace(/\n/g, '<br>')"></div>
+                                    <h4 class="text-base font-semibold text-gray-900 mb-3">Job Description</h4>
+                                    <div class="text-base text-gray-700 leading-relaxed" style="line-height: 1.8; white-space: pre-line;" x-html="selectedJob.description"></div>
                                 </div>
                             </template>
 
                             <!-- Requirements -->
                             <template x-if="selectedJob.requirements">
                                 <div>
-                                    <h4 class="text-sm font-semibold text-gray-900 mb-2">Requirements</h4>
-                                    <div class="text-sm text-gray-700 prose prose-sm max-w-none" x-html="selectedJob.requirements.replace(/\n/g, '<br>')"></div>
+                                    <h4 class="text-base font-semibold text-gray-900 mb-3">Requirements</h4>
+                                    <div class="text-base text-gray-700 leading-relaxed" style="line-height: 1.8; white-space: pre-line;" x-html="selectedJob.requirements"></div>
                                 </div>
                             </template>
 
@@ -399,7 +399,7 @@
                                         class="inline-flex items-center justify-center w-full px-6 py-3 text-base font-medium text-white rounded-lg hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200"
                                         style="background: linear-gradient(135deg, var(--brand-dark) 0%, var(--brand-accent) 100%);"
                                     >
-                                        Apply for this position
+                                        View On LinkedIn
                                         <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
                                         </svg>
