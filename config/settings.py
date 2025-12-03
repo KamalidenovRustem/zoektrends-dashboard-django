@@ -238,8 +238,8 @@ SERPAPI_KEY = env('SERPAPI_KEY', default='')
 # AUTHENTICATION CONFIGURATION
 # =============================================================================
 # Authentication - Simple username/password (Laravel style)
-DASHBOARD_USERNAME = env('DASHBOARD_USERNAME', default='admin')
-DASHBOARD_PASSWORD = env('DASHBOARD_PASSWORD', default='admin')
+DASHBOARD_USERNAME = env('DASHBOARD_USERNAME', default='agiliz_admin')
+DASHBOARD_PASSWORD = env('DASHBOARD_PASSWORD', default='Intern2025Rustem')
 
 
 # =============================================================================
