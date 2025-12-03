@@ -290,12 +290,12 @@
 
                             <!-- Company Results -->
                             <div x-show="message.companies && message.companies.length > 0" class="mt-3 space-y-2">
-                                <template x-for="company in message.companies" :key="company.company_name">
+                                <template x-for="company in message.companies" :key="company.company || company.company_name">
                                     <div class="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition">
                                         <!-- Company Header -->
                                         <div class="flex items-start justify-between mb-2">
                                             <div class="flex-1">
-                                                <h4 class="font-bold text-gray-900" x-text="company.company_name"></h4>
+                                                <h4 class="font-bold text-gray-900" x-text="company.company || company.company_name"></h4>
                                                 <p class="text-xs text-gray-600 mt-1">
                                                     <span x-text="company.company_type || 'Unknown Type'"></span>
                                                     <span x-show="company.company_industry" class="mx-1">•</span>
@@ -316,6 +316,25 @@
                                             </div>
                                         </div>
 
+                                        <!-- Score Breakdown Button -->
+                                        <div x-show="company.prospect_score !== undefined && company.score_breakdown" class="mb-2">
+                                            <button @click="company.showBreakdown = !company.showBreakdown" 
+                                                    class="text-xs text-purple-600 hover:text-purple-800 font-medium flex items-center gap-1">
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                                <span x-text="company.showBreakdown ? 'Hide Score Details' : 'Show Score Details'"></span>
+                                            </button>
+                                        </div>
+
+                                        <!-- Score Breakdown Details -->
+                                        <div x-show="company.showBreakdown && company.score_breakdown" 
+                                             x-collapse
+                                             class="mb-2 p-2 bg-purple-50 border border-purple-200 rounded text-xs">
+                                            <p class="font-semibold text-purple-900 mb-1">Score Breakdown:</p>
+                                            <div class="space-y-1 text-gray-700" x-html="formatScoreBreakdown(company.score_breakdown)"></div>
+                                        </div>
+
                                         <!-- Company Details -->
                                         <div class="grid grid-cols-2 gap-2 mb-2 text-xs text-gray-600">
                                             <div class="flex items-center">
@@ -329,25 +348,25 @@
                                         </div>
 
                                         <!-- Tech Stack -->
-                                        <div x-show="company.tech_stack && company.tech_stack.length > 0" class="mb-2">
+                                        <div x-show="(company.tech_stack || company.tech_stacks) && (company.tech_stack?.length > 0 || company.tech_stacks?.length > 0)" class="mb-2">
                                             <p class="text-xs font-semibold text-gray-700 mb-1">Tech Stack:</p>
                                             <div class="flex flex-wrap gap-1">
-                                                <template x-for="tech in company.tech_stack.slice(0, 6)" :key="tech">
+                                                <template x-for="tech in (company.tech_stack || company.tech_stacks || []).slice(0, 6)" :key="tech">
                                                     <span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs" x-text="tech"></span>
                                                 </template>
-                                                <span x-show="company.tech_stack.length > 6" 
+                                                <span x-show="(company.tech_stack || company.tech_stacks || []).length > 6" 
                                                       class="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"
-                                                      x-text="'+' + (company.tech_stack.length - 6) + ' more'"></span>
+                                                      x-text="'+' + ((company.tech_stack || company.tech_stacks || []).length - 6) + ' more'"></span>
                                             </div>
                                         </div>
 
                                         <!-- Actions -->
                                         <div class="flex gap-2 pt-2 border-t border-gray-200">
-                                            <a :href="'/dashboard/companies/?keyword=' + encodeURIComponent(company.company_name)" 
+                                            <a :href="'/dashboard/companies/?keyword=' + encodeURIComponent(company.company || company.company_name)" 
                                                class="flex-1 text-center px-2 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-medium transition">
                                                 View Details
                                             </a>
-                                            <a :href="'/dashboard/jobs/?keyword=' + encodeURIComponent(company.company_name)" 
+                                            <a :href="'/dashboard/jobs/?keyword=' + encodeURIComponent(company.company || company.company_name)" 
                                                class="flex-1 text-center px-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition">
                                                 View Jobs
                                             </a>
@@ -429,7 +448,7 @@
     <!-- Looker Dashboard & AI Chat Layout -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <!-- Looker Dashboard Embed (2/3 width) -->
-        <div class="lg:col-span-2 card p-0 overflow-hidden">
+        <div class="lg:col-span-3 card p-0 overflow-hidden">
             <div class="px-4 py-2 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
                 <h2 class="text-sm font-semibold text-brand-dark">Analytics Dashboard</h2>
                 <button onclick="document.getElementById('looker-dashboard-home').contentWindow.location.reload()" class="text-brand-dark hover:text-brand-accent transition">
@@ -834,11 +853,34 @@ function columbusChat() {
                 const data = await response.json();
                 
                 if (data.success) {
+                    // Normalize company data to ensure company_name is always available
+                    const companies = data.data;
+                    if (Array.isArray(companies)) {
+                        companies.forEach(company => {
+                            // Ensure both company and company_name fields exist
+                            if (company.company && !company.company_name) {
+                                company.company_name = company.company;
+                            } else if (company.company_name && !company.company) {
+                                company.company = company.company_name;
+                            }
+                            // Fallback: use company_id if neither exists
+                            if (!company.company && !company.company_name && company.company_id) {
+                                company.company = company.company_id;
+                                company.company_name = company.company_id;
+                            }
+                            console.log('Company data:', {
+                                company: company.company,
+                                company_name: company.company_name,
+                                company_id: company.company_id
+                            });
+                        });
+                    }
+                    
                     // Add AI response
                     this.messages.push({
                         role: 'assistant',
                         content: data.response,
-                        companies: data.data,
+                        companies: companies,
                         timestamp: new Date()
                     });
                 } else {
@@ -933,6 +975,23 @@ function columbusChat() {
             if (score >= 50) return 'Warm';
             if (score >= 30) return 'Cold';
             return 'Avoid';
+        },
+
+        formatScoreBreakdown(breakdown) {
+            if (!breakdown) return '';
+            
+            // If breakdown is a string, return it
+            if (typeof breakdown === 'string') {
+                return breakdown.replace(/\n/g, '<br>');
+            }
+            
+            // If breakdown is an object, format it
+            let html = '';
+            for (const [key, value] of Object.entries(breakdown)) {
+                const label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                html += `<div class="flex justify-between"><span>${label}:</span><span class="font-semibold">${value}</span></div>`;
+            }
+            return html;
         },
 
         formatMessage(content, role) {

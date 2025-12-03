@@ -203,6 +203,9 @@ class BigQueryService:
         try:
             where_clauses = []
             
+            # Always exclude Strategy keyword
+            where_clauses.append("(search_keyword IS NULL OR LOWER(search_keyword) != 'strategy')")
+            
             # Source filter
             if filters.get('source'):
                 where_clauses.append(f"LOWER(source) = '{filters['source'].lower()}'")
@@ -211,10 +214,17 @@ class BigQueryService:
             if filters.get('country'):
                 where_clauses.append(f"LOWER(country) = '{filters['country'].lower()}'")
             
-            # Tech stack filter - search in skills array
+            # Company filter
+            if filters.get('company'):
+                company = filters['company'].replace("'", "\\'")
+                where_clauses.append(f"LOWER(company) = '{company.lower()}'")
+            
+            # Tech stack filter - support multiple techs (comma-separated)
             if filters.get('tech_stack'):
-                tech = filters['tech_stack'].replace("'", "\\'")
-                where_clauses.append(f"EXISTS(SELECT 1 FROM UNNEST(skills) AS skill WHERE LOWER(skill) LIKE '%{tech.lower()}%')")
+                tech_list = [t.strip().replace("'", "\\'") for t in filters['tech_stack'].split(',') if t.strip()]
+                if tech_list:
+                    tech_conditions = [f"LOWER(skill) LIKE '%{tech.lower()}%'" for tech in tech_list]
+                    where_clauses.append(f"EXISTS(SELECT 1 FROM UNNEST(skills) AS skill WHERE {' OR '.join(tech_conditions)})")
             
             # Keyword search
             if filters.get('keyword'):
@@ -500,6 +510,12 @@ class BigQueryService:
                     result['tech_stacks'] = [t for t in result['tech_stacks'] if t]
                 else:
                     result['tech_stacks'] = []
+                
+                # Ensure company name is available in both formats
+                if 'company' in result and not result.get('company_name'):
+                    result['company_name'] = result['company']
+                elif 'company_name' in result and not result.get('company'):
+                    result['company'] = result['company_name']
                 
                 # Set defaults for missing company metadata
                 if not result.get('status'):
