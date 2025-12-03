@@ -65,7 +65,7 @@
                 <p class="text-xs min-[1410px]:text-sm text-gray-600 max-[1409px]:mt-0 min-[1410px]:mt-1">
                     <span x-text="companies.length"></span> found
                 </p>
-                <div class="max-[1409px]:mt-0 min-[1410px]:mt-2">
+                <div class="max-[1409px]:mt-0 min-[1410px]:mt-2 flex items-center gap-2">
                     <span 
                         x-show="filters.relevant === 'relevant'" 
                         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
@@ -78,6 +78,59 @@
                     >
                         Showing All Companies
                     </span>
+                    <!-- Status Legend Button -->
+                    <div class="relative" x-data="{ showLegend: false }">
+                        <button 
+                            @click="showLegend = !showLegend"
+                            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 transition-colors"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path>
+                            </svg>
+                            Status Legend
+                        </button>
+                        <!-- Legend Popup -->
+                        <div 
+                            x-show="showLegend"
+                            @click.away="showLegend = false"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 scale-95"
+                            x-transition:enter-end="opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 scale-100"
+                            x-transition:leave-end="opacity-0 scale-95"
+                            class="absolute z-50 mt-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200 p-4 left-0"
+                            style="display: none;"
+                        >
+                            <h3 class="text-sm font-semibold text-gray-900 mb-3">Company Status Colors</h3>
+                            <div class="space-y-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-300">Prospect</span>
+                                    <span class="text-xs text-gray-600">Potential lead</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-300">Follow up</span>
+                                    <span class="text-xs text-gray-600">Under consideration</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-300">Qualified</span>
+                                    <span class="text-xs text-gray-600">Meets criteria</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">Customer</span>
+                                    <span class="text-xs text-gray-600">Active customer</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-300">Not relevant</span>
+                                    <span class="text-xs text-gray-600">Filtered out</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-300">Undecided</span>
+                                    <span class="text-xs text-gray-600">Needs review</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -348,21 +401,34 @@
                     >
                         <!-- Company Header -->
                         <div class="mb-4">
-                            <!-- Company Name & Size -->
-                            <div class="flex flex-wrap items-baseline gap-2 mb-2">
-                                <h3 class="text-lg sm:text-xl font-bold text-gray-900 break-words max-w-full" x-text="company.company"></h3>
-                                <span x-show="company.company_size" class="inline-flex items-center px-2 py-0.5 rounded text-sm font-semibold bg-gray-200 text-gray-700" x-text="company.company_size"></span>
+                            <!-- Company Name, Size & Status -->
+                            <div class="flex flex-wrap items-center gap-2 mb-2">
+                                <h3 class="text-xl sm:text-2xl font-bold text-gray-900 break-words" x-text="company.company"></h3>
+                                <span x-show="company.company_size" class="inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-semibold bg-gray-200 text-gray-700" x-text="company.company_size"></span>
+                                <!-- Status Badge -->
+                                <span 
+                                    class="px-2.5 py-1 rounded-full text-xs font-semibold border"
+                                    :class="{
+                                        'bg-purple-100 text-purple-800 border-purple-300': company.status === 'Prospect',
+                                        'bg-blue-100 text-blue-800 border-blue-300': company.status === 'Follow up',
+                                        'bg-green-100 text-green-800 border-green-300': company.status === 'Qualified',
+                                        'bg-emerald-100 text-emerald-800 border-emerald-300': company.status === 'Customer',
+                                        'bg-red-100 text-red-800 border-red-300': company.status === 'Not relevant' || company.status === 'Rejected' || company.status === 'Qualify out competition' || company.status === 'Qualify out wrong info',
+                                        'bg-yellow-100 text-yellow-800 border-yellow-300': !company.status || company.status === 'Undecided'
+                                    }"
+                                    x-text="company.status || 'Undecided'"
+                                ></span>
                             </div>
                             
                             <!-- Company Type & Industry -->
                             <div class="space-y-1 mb-3">
-                                <p x-show="company.company_type" class="text-sm font-medium text-indigo-700" x-text="company.company_type"></p>
-                                <p x-show="company.company_industry" class="text-sm text-gray-600" x-text="company.company_industry"></p>
+                                <p x-show="company.company_type" class="text-base font-medium text-indigo-700" x-text="company.company_type"></p>
+                                <p x-show="company.company_industry" class="text-base text-gray-600" x-text="company.company_industry"></p>
                             </div>
                             
                             <!-- Job Count Badge -->
                             <div>
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800">
+                                <span class="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold bg-blue-100 text-blue-800">
                                     <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd" d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0110 13a22.95 22.95 0 01-8-1.43V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5zm1 5a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clip-rule="evenodd"/>
                                         <path d="M2 13.692V16a2 2 0 002 2h12a2 2 0 002-2v-2.308A24.974 24.974 0 0110 15c-2.796 0-5.487-.46-8-1.308z"/>
@@ -375,18 +441,18 @@
 
                         <!-- Locations -->
                         <div x-show="company.locations && company.locations.length > 0" class="mb-3">
-                            <div class="flex items-center gap-1 mb-1">
+                            <div class="flex items-center gap-1 mb-1.5">
                                 <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                                 </svg>
-                                <span class="text-xs font-medium text-gray-700">Locations:</span>
+                                <span class="text-sm font-medium text-gray-700">Locations:</span>
                             </div>
-                            <div class="flex flex-wrap gap-1">
+                            <div class="flex flex-wrap gap-1.5">
                                 <template x-for="location in company.locations.slice(0, 3)" :key="location">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-700" x-text="location"></span>
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-sm bg-gray-100 text-gray-700" x-text="location"></span>
                                 </template>
-                                <span x-show="company.locations.length > 3" class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-700">
+                                <span x-show="company.locations.length > 3" class="inline-flex items-center px-2.5 py-1 rounded-lg text-sm bg-gray-100 text-gray-700">
                                     +<span x-text="company.locations.length - 3"></span> more
                                 </span>
                             </div>
@@ -394,31 +460,31 @@
 
                         <!-- Countries -->
                         <div x-show="company.countries && company.countries.length > 0" class="mb-3">
-                            <div class="flex items-center gap-1 mb-1">
+                            <div class="flex items-center gap-1 mb-1.5">
                                 <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
-                                <span class="text-xs font-medium text-gray-700">Countries:</span>
+                                <span class="text-sm font-medium text-gray-700">Countries:</span>
                             </div>
-                            <div class="flex flex-wrap gap-1">
+                            <div class="flex flex-wrap gap-1.5">
                                 <template x-for="country in company.countries" :key="country">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-green-100 text-green-700" x-text="country"></span>
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-sm bg-green-100 text-green-700" x-text="country"></span>
                                 </template>
                             </div>
                         </div>
 
                         <!-- Sources -->
                         <div x-show="company.sources && company.sources.length > 0" class="mb-3">
-                            <div class="flex items-center gap-1 mb-1">
+                            <div class="flex items-center gap-1 mb-1.5">
                                 <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
                                 </svg>
-                                <span class="text-xs font-medium text-gray-700">Sources:</span>
+                                <span class="text-sm font-medium text-gray-700">Sources:</span>
                             </div>
-                            <div class="flex flex-wrap gap-1">
+                            <div class="flex flex-wrap gap-1.5">
                                 <template x-for="source in company.sources" :key="source">
                                     <span 
-                                        class="inline-flex items-center px-2 py-0.5 rounded text-xs"
+                                        class="inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-medium"
                                         :class="{
                                             'bg-blue-100 text-blue-700': source.toLowerCase().includes('linkedin'),
                                             'bg-purple-100 text-purple-700': source.toLowerCase().includes('adzuna'),
@@ -436,25 +502,25 @@
                                 <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
                                 </svg>
-                                <span class="text-xs font-medium text-gray-700">Tech Stack:</span>
-                                <span class="text-xs text-gray-500" x-text="`(${company.tech_stacks.length})`"></span>
+                                <span class="text-sm font-medium text-gray-700">Tech Stack:</span>
+                                <span class="text-sm text-gray-500" x-text="`(${company.tech_stacks.length})`"></span>
                             </div>
-                            <div class="flex flex-wrap gap-1.5">
+                            <div class="flex flex-wrap gap-2">
                                 <template x-for="tech in company.tech_stacks.slice(0, 8)" :key="tech">
                                     <span 
-                                        class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border"
+                                        class="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium border"
                                         :class="getTechStackColor(tech)"
                                         x-text="tech"
                                     ></span>
                                 </template>
-                                <span x-show="company.tech_stacks.length > 8" class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-gray-50 text-gray-600 border border-gray-300">
+                                <span x-show="company.tech_stacks.length > 8" class="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-50 text-gray-600 border border-gray-300">
                                     +<span x-text="company.tech_stacks.length - 8"></span> more
                                 </span>
                             </div>
                         </div>
 
                         <!-- Last Job Date -->
-                        <div class="text-xs text-gray-500 mt-3">
+                        <div class="text-sm text-gray-500 mt-3">
                             Last job: <span x-text="formatDate(company.last_job_date)"></span>
                         </div>
                     </div>
@@ -677,7 +743,7 @@
                                         <span class="text-xs text-gray-500" x-text="formatDate(job.scraped_at)"></span>
                                         <div class="flex items-center gap-2">
                                             <a 
-                                                :href="`/dashboard/jobs/?company=${encodeURIComponent(selectedCompany.company_name)}`"
+                                                :href="`/dashboard/jobs/?company=${encodeURIComponent(job.company_name)}`"
                                                 class="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1"
                                             >
                                                 View Details
@@ -1001,6 +1067,11 @@ function companiesData() {
 
         init() {
             console.log('Companies page initialized with', this.companies.length, 'companies');
+            
+            // Sort filter options alphabetically
+            if (this.availableTechs && Array.isArray(this.availableTechs)) {
+                this.availableTechs.sort((a, b) => a.localeCompare(b));
+            }
             
             // Check available space
             this.checkSpaceAvailability();

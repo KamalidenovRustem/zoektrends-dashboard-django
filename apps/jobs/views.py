@@ -27,7 +27,7 @@ def api_list(request):
     
     # Collect filters
     filters = {}
-    for key in ['source', 'country', 'company_type', 'solution_domain', 'tech_stack', 'keyword', 'posted_within', 'sort_by']:
+    for key in ['source', 'country', 'company', 'company_type', 'solution_domain', 'tech_stack', 'keyword', 'posted_within', 'sort_by']:
         value = request.GET.get(key, '').strip()
         if value:
             filters[key] = value
@@ -60,13 +60,13 @@ def filter_options(request):
     try:
         bq_service = get_bigquery_service()
         
-        countries = bq_service.get_unique_countries()
-        tech_stacks = bq_service.get_unique_tech_stacks()
+        # Use same method as companies page - gets tech stacks from skills_registry
+        filter_opts = bq_service.get_company_filter_options()
         
         return JsonResponse({
             'success': True,
-            'countries': countries,
-            'tech_stacks': tech_stacks
+            'countries': filter_opts.get('countries', []),
+            'tech_stacks': filter_opts.get('tech_stacks', [])
         })
         
     except Exception as e:

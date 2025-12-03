@@ -26,11 +26,11 @@
         </div>
     </div>
 
-    <!-- Looker Dashboard & AI Chat Layout -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Looker Dashboard Embed (2/3 width) -->
-        <div class="lg:col-span-2 card p-0 overflow-hidden">
-            <div class="relative" style="height: calc(100vh - 240px); min-height: 700px;">
+    <!-- Looker Dashboard Full Width -->
+    <div class="w-full">
+        <!-- Looker Dashboard Embed (Full Width) -->
+        <div class="card p-0 overflow-hidden">
+            <div class="relative" style="height: calc(100vh - 180px); min-height: 800px;">
                 <iframe
                     id="looker-dashboard"
                     src="https://datasight.cloud.looker.com/embed/dashboards/69?Country=&Status=&Job+Status=&Technology=&embed_domain={{ request.get_host }}"
@@ -45,8 +45,8 @@
             </div>
         </div>
 
-        <!-- AI Chat Interface (1/3 width) -->
-        <div class="lg:col-span-1">
+        <!-- AI Chat Interface (Hidden - can be toggled) -->
+        <div class="hidden lg:col-span-1">
             <div class="card p-0 overflow-hidden flex flex-col" style="height: calc(100vh - 180px); min-height: 755px;">
                 <div class="px-4 py-2 border-b border-gray-200 bg-gray-50">
                     <h2 class="text-sm font-semibold text-brand-dark">AI Assistant</h2>

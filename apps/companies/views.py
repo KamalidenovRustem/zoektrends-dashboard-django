@@ -14,6 +14,47 @@ import json
 logger = logging.getLogger(__name__)
 
 
+@require_http_methods(["GET"])
+def api_get_company(request):
+    """Get a single company by name from BigQuery"""
+    try:
+        company_name = request.GET.get('name', '').strip()
+        
+        if not company_name:
+            return JsonResponse({
+                'success': False,
+                'error': 'Company name is required'
+            }, status=400)
+        
+        bq_service = get_bigquery_service()
+        
+        # Use keyword filter to find exact company
+        filters = {'keyword': company_name}
+        companies = bq_service.get_companies_with_filters(filters, limit=1)
+        
+        if not companies:
+            return JsonResponse({
+                'success': False,
+                'error': 'Company not found'
+            }, status=404)
+        
+        company = companies[0]
+        
+        logger.info(f"API GET COMPANY - Found: {company.get('company')}")
+        
+        return JsonResponse({
+            'success': True,
+            'company': company
+        })
+        
+    except Exception as e:
+        logger.error(f"Failed to get company: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
 def index(request):
     """Companies listing page"""
     limit = min(
